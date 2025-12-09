@@ -1,20 +1,16 @@
 import Link from "next/link";
 import Image from "next/image";
-import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Store } from "lucide-react";
+import { restaurantsApi } from "@/lib/api-client";
 import { getMockRestaurants } from "@/lib/mock-data";
 
 async function getRestaurants() {
   try {
-    return await prisma.restaurant.findMany({
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
+    return await restaurantsApi.getAll(true);
   } catch (error) {
-    console.error("Database error, using mock data:", error);
+    console.error("API error, using mock data:", error);
     return getMockRestaurants();
   }
 }

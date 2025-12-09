@@ -2,9 +2,12 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus, Store, Package, Star } from "lucide-react";
+import { restaurantsApi } from "@/lib/api-client";
+import { auth } from "@/lib/auth";
 import { getMockRestaurants } from "@/lib/mock-data";
 
 interface Restaurant {
@@ -13,33 +16,44 @@ interface Restaurant {
   slug: string;
   qrCode: string;
   createdAt: string;
-  _count: {
+  categoryCount?: number;
+  _count?: {
     categories: number;
   };
 }
 
 export default function AdminPage() {
+  const router = useRouter();
   // Initialize with mock data immediately
   const [restaurants, setRestaurants] = useState<Restaurant[]>(getMockRestaurants());
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // Try to fetch from API, but don't block on it
+    // Check authentication
+    if (!auth.isAuthenticated() || (!auth.isSuperAdmin() && !auth.isRestaurantOwner())) {
+      router.push('/login');
+      return;
+    }
     fetchRestaurants();
-  }, []);
+  }, [router]);
 
   const fetchRestaurants = async () => {
+    setLoading(true);
     try {
-      const response = await fetch("/api/restaurants");
-      if (response.ok) {
-        const data = await response.json();
+      const token = auth.getToken();
+      if (token) {
+        const data = await restaurantsApi.getAll(false);
         if (data && data.length > 0) {
-          setRestaurants(data);
+          setRestaurants(data.map((r: any) => ({
+            ...r,
+            _count: { categories: r.categoryCount || 0 }
+          })));
         }
       }
     } catch (error) {
-      // Silently fail - we already have mock data
-      console.log("Using mock data for admin page");
+      console.log("API error, using mock data:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -69,7 +83,7 @@ export default function AdminPage() {
                 <div className="flex items-center justify-between">
                   <Store className="h-8 w-8 text-primary" />
                   <div className="text-sm text-gray-500">
-                    {restaurant._count.categories} categories
+                    {restaurant._count?.categories || restaurant.categoryCount || 0} categories
                   </div>
                 </div>
                 <CardTitle>{restaurant.name}</CardTitle>

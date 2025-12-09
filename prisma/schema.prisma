@@ -1,36 +1,125 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
+// Restaurant Menu App - Complete Database Schema
+// PostgreSQL Database
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-model Restaurant {
-  id          String   @id @default(cuid())
-  name        String
-  slug        String   @unique
-  logo        String?
-  description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+// ============================================
+// AUTHENTICATION & USERS
+// ============================================
+
+enum UserRole {
+  SUPER_ADMIN
+  RESTAURANT_OWNER
+  CUSTOMER
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+model User {
+  id            String      @id @default(cuid())
+  email         String      @unique
+  passwordHash  String
+  firstName     String?
+  lastName      String?
+  phone         String?
+  role          UserRole    @default(CUSTOMER)
+  status        UserStatus  @default(ACTIVE)
+  emailVerified Boolean     @default(false)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
   
-  categories Category[]
-  qrCode     String   @unique @default(cuid())
+  // Relations
+  restaurants   RestaurantOwner[]
+  orders        Order[]
+  payments      Payment[]
+  
+  @@index([email])
+  @@index([role])
+  @@index([status])
+}
+
+model RestaurantOwner {
+  id           String     @id @default(cuid())
+  userId       String     @unique
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  restaurantId String     @unique
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  isActive     Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  
+  @@index([userId])
+  @@index([restaurantId])
+}
+
+// ============================================
+// RESTAURANTS
+// ============================================
+
+enum RestaurantStatus {
+  ACTIVE
+  INACTIVE
+  PENDING
+  SUSPENDED
+}
+
+model Restaurant {
+  id          String           @id @default(cuid())
+  name        String
+  slug        String           @unique
+  logo        String?
+  coverImage  String?
+  description String?
+  status      RestaurantStatus @default(PENDING)
+  
+  // Contact Information
+  phone       String?
+  email       String?
+  website     String?
+  address     String?
+  city        String?
+  country     String?
+  
+  // Settings
+  qrCode      String           @unique @default(cuid())
+  isPublished Boolean          @default(false)
+  
+  // Timestamps
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  
+  // Relations
+  categories  Category[]
+  orders      Order[]
+  owners      RestaurantOwner[]
   
   @@index([slug])
+  @@index([status])
   @@index([qrCode])
+  @@index([isPublished])
 }
+
+// ============================================
+// MENU STRUCTURE
+// ============================================
 
 model Category {
   id           String   @id @default(cuid())
   name         String
   description  String?
   order        Int      @default(0)
+  isActive     Boolean  @default(true)
   restaurantId String
   restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   createdAt    DateTime @default(now())
@@ -46,18 +135,21 @@ model MenuItem {
   id          String   @id @default(cuid())
   name        String
   description String
-  price       Float
+  price       Decimal  @db.Decimal(10, 2)
   image       String?
   order       Int      @default(0)
+  isAvailable Boolean  @default(true)
   categoryId  String
   category    Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   
+  orderItems  OrderItem[]
   ratings     Rating[]
   
   @@index([categoryId])
   @@index([order])
+  @@index([isAvailable])
 }
 
 model Rating {
@@ -66,8 +158,128 @@ model Rating {
   comment    String?
   menuItemId String
   menuItem   MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  customerId String?
+  customerName String?
   createdAt  DateTime @default(now())
   
   @@index([menuItemId])
+  @@index([createdAt])
 }
 
+// ============================================
+// ORDERS & PAYMENTS
+// ============================================
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PREPARING
+  READY
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  PAYPAL
+  CASH
+  CARD
+}
+
+model Order {
+  id            String        @id @default(cuid())
+  orderNumber   String        @unique
+  restaurantId  String
+  restaurant    Restaurant    @relation(fields: [restaurantId], references: [id])
+  userId        String?
+  user          User?         @relation(fields: [userId], references: [id])
+  
+  // Customer Info
+  customerName  String?
+  customerEmail String?
+  customerPhone String?
+  
+  // Order Details
+  status        OrderStatus   @default(PENDING)
+  totalAmount   Decimal       @db.Decimal(10, 2)
+  notes         String?
+  
+  // Timestamps
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  confirmedAt   DateTime?
+  deliveredAt   DateTime?
+  
+  // Relations
+  orderItems    OrderItem[]
+  payment       Payment?
+  
+  @@index([restaurantId])
+  @@index([userId])
+  @@index([status])
+  @@index([orderNumber])
+  @@index([createdAt])
+}
+
+model OrderItem {
+  id          String   @id @default(cuid())
+  orderId     String
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItemId  String
+  menuItem    MenuItem @relation(fields: [menuItemId], references: [id])
+  quantity    Int
+  price       Decimal  @db.Decimal(10, 2)
+  subtotal    Decimal  @db.Decimal(10, 2)
+  
+  @@index([orderId])
+  @@index([menuItemId])
+}
+
+model Payment {
+  id              String        @id @default(cuid())
+  orderId         String        @unique
+  order           Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  userId          String?
+  user            User?         @relation(fields: [userId], references: [id])
+  
+  // Payment Details
+  amount          Decimal       @db.Decimal(10, 2)
+  method          PaymentMethod
+  status          PaymentStatus @default(PENDING)
+  
+  // PayPal Integration
+  paypalOrderId   String?       @unique
+  paypalTransactionId String?
+  
+  // Timestamps
+  createdAt       DateTime      @default(now())
+  completedAt     DateTime?
+  
+  @@index([orderId])
+  @@index([userId])
+  @@index([status])
+  @@index([paypalOrderId])
+}
+
+// ============================================
+// FILE UPLOADS
+// ============================================
+
+model FileUpload {
+  id          String   @id @default(cuid())
+  fileName    String
+  originalName String
+  mimeType    String
+  size        Int
+  url         String
+  uploadedBy  String?
+  createdAt   DateTime @default(now())
+  
+  @@index([createdAt])
+}

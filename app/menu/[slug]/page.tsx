@@ -1,38 +1,30 @@
 import { notFound } from "next/navigation";
 import Image from "next/image";
-import { prisma } from "@/lib/prisma";
 import { ImageSlider } from "@/components/ImageSlider";
 import { Rating } from "@/components/Rating";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { QRCode } from "@/components/QRCode";
+import { restaurantsApi } from "@/lib/api-client";
 import { getMockRestaurantBySlug } from "@/lib/mock-data";
 
 async function getRestaurant(slug: string) {
   try {
-    const restaurant = await prisma.restaurant.findUnique({
-      where: { slug },
-      include: {
-        categories: {
-          include: {
-            menuItems: {
-              include: {
-                ratings: true,
-              },
-              orderBy: {
-                order: "asc",
-              },
-            },
-          },
-          orderBy: {
-            order: "asc",
-          },
-        },
-      },
-    });
-
-    if (restaurant) return restaurant;
+    const restaurant = await restaurantsApi.getBySlug(slug);
+    if (restaurant) {
+      // Transform API response to match expected format
+      return {
+        ...restaurant,
+        categories: restaurant.categories.map((cat: any) => ({
+          ...cat,
+          menuItems: cat.menuItems.map((item: any) => ({
+            ...item,
+            ratings: [] // Ratings handled separately in API
+          }))
+        }))
+      };
+    }
   } catch (error) {
-    console.error("Database error, using mock data:", error);
+    console.error("API error, using mock data:", error);
   }
 
   // Fallback to mock data
@@ -52,20 +44,16 @@ export default async function MenuPage({
   }
 
   const menuUrl = `${process.env.NEXT_PUBLIC_URL || "http://localhost:3000"}/menu/${restaurant.slug}`;
-  const averageRatings = restaurant.categories.flatMap((cat) =>
-    cat.menuItems.map((item) => {
-      const ratings = item.ratings || [];
-      const avg =
-        ratings.length > 0
-          ? ratings.reduce((sum: number, r: any) => sum + (r.value || 0), 0) / ratings.length
-          : 0;
-      return { itemId: item.id, avg, count: ratings.length };
-    })
-  );
-
   const getAverageRating = (itemId: string) => {
-    const rating = averageRatings.find((r) => r.itemId === itemId);
-    return { avg: rating?.avg || 0, count: rating?.count || 0 };
+    // Ratings are already calculated in API response
+    const menuItem = restaurant.categories
+      .flatMap((cat: any) => cat.menuItems)
+      .find((item: any) => item.id === itemId);
+    
+    return {
+      avg: menuItem?.averageRating || 0,
+      count: menuItem?.ratingCount || 0
+    };
   };
 
   return (
