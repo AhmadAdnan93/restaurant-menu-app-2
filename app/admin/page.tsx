@@ -56,7 +56,7 @@ export default function AdminPage() {
       const token = auth.getToken();
       if (token) {
         const data = await restaurantsApi.getAll(false);
-        if (data && data.length > 0) {
+        if (Array.isArray(data) && data.length > 0) {
           setRestaurants(data.map((r: any) => ({
             ...r,
             _count: { categories: r.categoryCount || 0 }
@@ -194,7 +194,7 @@ export default function AdminPage() {
           <DialogHeader>
             <DialogTitle>Delete Restaurant</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete "{restaurantToDelete?.name}"? This action cannot be undone and will permanently delete the restaurant and all its data.
+              Are you sure you want to delete &quot;{restaurantToDelete?.name}&quot;? This action cannot be undone and will permanently delete the restaurant and all its data.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

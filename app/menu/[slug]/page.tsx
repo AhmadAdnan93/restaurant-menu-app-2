@@ -1,13 +1,27 @@
 import { notFound } from "next/navigation";
+import { headers } from "next/headers";
 import Image from "next/image";
 import { ImageSlider } from "@/components/ImageSlider";
 import { Rating } from "@/components/Rating";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { QRCode } from "@/components/QRCode";
 import { restaurantsApi } from "@/lib/api-client";
-import { getMockRestaurantBySlug } from "@/lib/mock-data";
+import { getMockRestaurantBySlug, type MockRestaurant } from "@/lib/mock-data";
 
-async function getRestaurant(slug: string) {
+/** Get the base URL for QR codes - use production URL so customers can scan in restaurants */
+async function getMenuBaseUrl(): Promise<string> {
+  // Production: Set NEXT_PUBLIC_APP_URL to your public domain (e.g. https://yourmenu.com)
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_URL;
+  if (appUrl) return appUrl.replace(/\/$/, ""); // Remove trailing slash
+
+  // Fallback: use current request host (for local dev)
+  const headersList = await headers();
+  const host = headersList.get("host") || "localhost:3000";
+  const proto = headersList.get("x-forwarded-proto") || (host.includes("localhost") ? "http" : "https");
+  return `${proto}://${host}`;
+}
+
+async function getRestaurant(slug: string): Promise<MockRestaurant | null> {
   // Clean slug - remove any leading slashes or /menu/ prefix (handle multiple /menu/ prefixes)
   let cleanSlug = slug;
   // Remove all /menu/ prefixes
@@ -21,23 +35,24 @@ async function getRestaurant(slug: string) {
     const restaurant = await restaurantsApi.getBySlug(cleanSlug);
     if (restaurant) {
       // Transform API response to match expected format
+      const r = restaurant as { categories?: Array<{ menuItems?: unknown[] }>; [key: string]: unknown };
       return {
         ...restaurant,
-        categories: (restaurant.categories || []).map((cat: any) => ({
+        categories: (r.categories || []).map((cat: any) => ({
           ...cat,
           menuItems: (cat.menuItems || []).map((item: any) => ({
             ...item,
             ratings: [] // Ratings handled separately in API
           }))
         }))
-      };
+      } as MockRestaurant;
     }
   } catch (error) {
     console.error("API error, using mock data:", error);
   }
 
   // Fallback to mock data
-  return getMockRestaurantBySlug(cleanSlug);
+  return getMockRestaurantBySlug(cleanSlug) ?? null;
 }
 
 export default async function MenuPage({
@@ -52,7 +67,8 @@ export default async function MenuPage({
     notFound();
   }
 
-  const menuUrl = `${process.env.NEXT_PUBLIC_URL || "http://localhost:3000"}/menu/${restaurant.slug}`;
+  const baseUrl = await getMenuBaseUrl();
+  const menuUrl = `${baseUrl}/menu/${restaurant.slug}`;
   const getAverageRating = (itemId: string) => {
     // Ratings are already calculated in API response
     const menuItem = restaurant.categories

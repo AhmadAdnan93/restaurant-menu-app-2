@@ -36,6 +36,14 @@ async function apiRequest<T>(endpoint: string, config: ApiConfig = {}): Promise<
 }
 
 // Auth API
+export interface LoginResponse {
+  token: string;
+  userId: string;
+  email: string;
+  role: string;
+  restaurantId?: string;
+}
+
 export const authApi = {
   register: (data: {
     email: string;
@@ -46,7 +54,7 @@ export const authApi = {
   }) => apiRequest('/auth/register', { method: 'POST', body: data }),
 
   login: (email: string, password: string) =>
-    apiRequest('/auth/login', {
+    apiRequest<LoginResponse>('/auth/login', {
       method: 'POST',
       body: { email, password },
     }),

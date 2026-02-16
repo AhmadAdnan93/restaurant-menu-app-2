@@ -117,9 +117,11 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
-// CORS Configuration
-var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? 
-    new[] { "http://localhost:3001" };
+// CORS Configuration - supports CORS_ORIGINS env var (comma-separated) for deployment
+var corsOriginsEnv = Environment.GetEnvironmentVariable("CORS_ORIGINS");
+var allowedOrigins = !string.IsNullOrEmpty(corsOriginsEnv)
+    ? corsOriginsEnv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+    : builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? new[] { "http://localhost:3001" };
 
 builder.Services.AddCors(options =>
 {

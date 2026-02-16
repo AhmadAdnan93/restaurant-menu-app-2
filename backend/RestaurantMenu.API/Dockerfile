@@ -1,21 +1,24 @@
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
-WORKDIR /app
-EXPOSE 80
-EXPOSE 443
-
+# Build stage
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
-COPY ["RestaurantMenu.API.csproj", "./"]
-RUN dotnet restore "RestaurantMenu.API.csproj"
-COPY . .
-WORKDIR "/src"
-RUN dotnet build "RestaurantMenu.API.csproj" -c Release -o /app/build
 
-FROM build AS publish
-RUN dotnet publish "RestaurantMenu.API.csproj" -c Release -o /app/publish
+# Copy project file and restore
+COPY *.csproj ./
+RUN dotnet restore
 
-FROM base AS final
+# Copy source and publish
+COPY . ./
+RUN dotnet publish -c Release -o /app/publish
+
+# Runtime stage
+FROM mcr.microsoft.com/dotnet/aspnet:8.0
 WORKDIR /app
-COPY --from=publish /app/publish .
-ENTRYPOINT ["dotnet", "RestaurantMenu.API.dll"]
 
+# Create uploads directory
+RUN mkdir -p /app/uploads
+
+COPY --from=build /app/publish ./
+EXPOSE 8080
+
+# Railway/Render inject PORT at runtime
+CMD ["sh", "-c", "dotnet RestaurantMenu.API.dll --urls http://+:${PORT:-8080}"]

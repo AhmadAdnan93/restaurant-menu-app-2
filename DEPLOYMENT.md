@@ -8,7 +8,7 @@
 
 2. **Environment Variables**
    - Create a `.env.local` file with your database URL
-   - Set `NEXT_PUBLIC_URL` to your production URL
+   - Set `NEXT_PUBLIC_APP_URL` (or `NEXT_PUBLIC_URL`) to your production URL — **required for QR codes** so customers can scan menus in restaurants
 
 ## Local Development Setup
 
@@ -54,7 +54,7 @@
    - Import your GitHub repository
    - Add environment variables:
      - `DATABASE_URL`: Your PostgreSQL connection string
-     - `NEXT_PUBLIC_URL`: Your production URL (e.g., https://your-app.vercel.app)
+     - `NEXT_PUBLIC_APP_URL` (or `NEXT_PUBLIC_URL`): Your production URL (e.g., https://your-app.vercel.app) — **QR codes on menus will point to this URL**
    - Deploy!
 
 3. **Run Migrations**
@@ -89,6 +89,7 @@ Create `.env.local` for local development:
 ```env
 DATABASE_URL="postgresql://user:password@localhost:5432/restaurant_menu?schema=public"
 NEXT_PUBLIC_URL="http://localhost:3000"
+# For production: NEXT_PUBLIC_APP_URL="https://yourmenu.com"
 ```
 
 For production, set these in your hosting platform's environment variables.

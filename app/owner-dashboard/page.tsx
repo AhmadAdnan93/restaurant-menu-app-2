@@ -35,9 +35,9 @@ export default function OwnerDashboardPage() {
         const restaurantData = await restaurantsApi.getById(user.restaurantId);
         setRestaurant(restaurantData);
 
-        const ordersData = await ordersApi.getMyOrders(token);
+        const ordersData = (await ordersApi.getMyOrders(token)) as Array<{ restaurantId?: string }>;
         // Filter orders for this restaurant
-        const restaurantOrders = ordersData.filter((o: any) => o.restaurantId === user.restaurantId);
+        const restaurantOrders = ordersData.filter((o) => o.restaurantId === user.restaurantId);
         setOrders(restaurantOrders);
       }
     } catch (error) {
