@@ -1,7 +1,8 @@
-import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { NextRequest, NextResponse } from "next/server";
 
-export async function POST(request: Request) {
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+
+export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { value, comment, menuItemId } = body;
@@ -13,20 +14,33 @@ export async function POST(request: Request) {
       );
     }
 
-    const rating = await prisma.rating.create({
-      data: {
-        value,
-        comment,
-        menuItemId,
+    const response = await fetch(`${API_BASE_URL}/ratings`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
       },
+      body: JSON.stringify({
+        menuItemId,
+        value,
+        comment: comment || null,
+      }),
     });
 
-    return NextResponse.json(rating, { status: 201 });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      return NextResponse.json(
+        { error: err.message || "Failed to create rating" },
+        { status: response.status }
+      );
+    }
+
+    const data = await response.json();
+    return NextResponse.json(data, { status: 201 });
   } catch (error) {
+    console.error("Ratings API error:", error);
     return NextResponse.json(
       { error: "Failed to create rating" },
       { status: 500 }
     );
   }
 }
-
