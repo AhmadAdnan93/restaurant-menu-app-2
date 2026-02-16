@@ -30,6 +30,10 @@ yarn-error.log*
 
 # vercel
 .vercel
+.vercel-token
+
+# deployment (contains secrets)
+RAILWAY_VALUES.txt
 
 # typescript
 *.tsbuildinfo

@@ -1,6 +1,20 @@
 // API Client for .NET Backend
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+function getApiBaseUrl(): string {
+  const configured =
+    process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+  // Server: use BACKEND_API_URL if set (not exposed to client)
+  if (typeof window === "undefined" && process.env.BACKEND_API_URL) {
+    return process.env.BACKEND_API_URL;
+  }
+  // Client on deployed site without backend URL: use proxy (same-origin, no CORS)
+  if (typeof window !== "undefined" && configured.includes("localhost")) {
+    return "/api/backend";
+  }
+  return configured;
+}
+
+const API_BASE_URL = getApiBaseUrl();
 
 interface ApiConfig {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
