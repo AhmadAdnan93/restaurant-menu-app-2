@@ -7,14 +7,14 @@ function getApiBaseUrl(): string {
   if (typeof window === "undefined" && process.env.BACKEND_API_URL) {
     return process.env.BACKEND_API_URL;
   }
-  // Client on deployed site without backend URL: use proxy (same-origin, no CORS)
-  if (typeof window !== "undefined" && configured.includes("localhost")) {
-    return "/api/backend";
+  // Client: if configured URL is localhost, use proxy (fixes CORS when deployed)
+  if (typeof window !== "undefined") {
+    if (configured.includes("localhost") || configured.includes("127.0.0.1")) {
+      return "/api/backend";
+    }
   }
   return configured;
 }
-
-const API_BASE_URL = getApiBaseUrl();
 
 interface ApiConfig {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
@@ -35,7 +35,8 @@ async function apiRequest<T>(endpoint: string, config: ApiConfig = {}): Promise<
     requestHeaders['Authorization'] = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+  const baseUrl = getApiBaseUrl();
+  const response = await fetch(`${baseUrl}${endpoint}`, {
     method,
     headers: requestHeaders,
     body: body ? JSON.stringify(body) : undefined,
