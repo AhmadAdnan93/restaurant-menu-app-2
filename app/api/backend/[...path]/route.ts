@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 const BACKEND_URL =
   process.env.BACKEND_API_URL ||
   process.env.NEXT_PUBLIC_API_URL ||
-  "http://localhost:5000/api";
+  "";
 
 export async function GET(
   request: NextRequest,
@@ -38,9 +38,22 @@ async function proxy(
   params: Promise<{ path: string[] }>,
   method: string
 ) {
+  const base = (BACKEND_URL?.trim() || process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api").replace(/\/$/, "");
+  const isProduction = process.env.VERCEL === "1";
+  if (isProduction && (!base || base.includes("localhost") || base.includes("127.0.0.1"))) {
+    return NextResponse.json(
+      {
+        message:
+          "Backend not configured. Add BACKEND_API_URL in Vercel to your Railway URL + /api. Run: .\\FIX_NOW.ps1 \"https://your-railway-url.up.railway.app\"",
+      },
+      { status: 503 }
+    );
+  }
+  const effectiveUrl = base;
+
   const { path } = await params;
   const pathStr = path.join("/");
-  const url = `${BACKEND_URL.replace(/\/$/, "")}/${pathStr}`;
+  const url = `${effectiveUrl}/${pathStr}`;
   const search = request.nextUrl.searchParams.toString();
   const fullUrl = search ? `${url}?${search}` : url;
 
