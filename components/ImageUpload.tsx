@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Upload, X, Loader2 } from "lucide-react";
 import { uploadApi } from "@/lib/api-client";
 import { auth } from "@/lib/auth";
+import { ensureAbsoluteImageUrl } from "@/lib/image-utils";
 
 interface ImageUploadProps {
   value?: string;
@@ -30,10 +31,10 @@ export function ImageUpload({
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Update preview when value changes externally
+  // Update preview when value changes externally (fix relative/malformed URLs)
   useEffect(() => {
     if (value) {
-      setPreview(value);
+      setPreview(ensureAbsoluteImageUrl(value) || value);
     } else {
       // Only clear preview if not currently uploading
       setPreview((prev) => (prev?.startsWith('data:') ? prev : null));
@@ -113,7 +114,7 @@ export function ImageUpload({
             {/* Use regular img tag to avoid Next.js Image optimization issues with localhost and data URLs */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={preview}
+              src={typeof preview === "string" ? ensureAbsoluteImageUrl(preview) || preview : preview}
               alt="Preview"
               className="w-full h-full object-cover"
               onError={(e) => {

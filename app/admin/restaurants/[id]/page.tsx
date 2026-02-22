@@ -104,8 +104,12 @@ export default function RestaurantManagePage() {
   }, [params.id]);
 
   useEffect(() => {
-    // Try to fetch from API, but don't block
     fetchRestaurant();
+    // Warm up backend (Railway cold start) so create actions are faster
+    if (typeof window !== "undefined" && !window.location.hostname.includes("localhost")) {
+      const base = "/api/backend";
+      fetch(`${base}/restaurants?publishedOnly=true`).catch(() => {});
+    }
   }, [fetchRestaurant]);
 
   const handleCreateCategory = async (e: React.FormEvent) => {

@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { headers } from "next/headers";
 import Image from "next/image";
+import { ensureAbsoluteImageUrl } from "@/lib/image-utils";
 import { ImageSlider } from "@/components/ImageSlider";
 import { Rating } from "@/components/Rating";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -97,7 +98,7 @@ export default async function MenuPage({
               {restaurant.logo && (
                 <div className="relative w-16 h-16 md:w-20 md:h-20">
                   <Image
-                    src={restaurant.logo}
+                    src={ensureAbsoluteImageUrl(restaurant.logo)}
                     alt={restaurant.name}
                     fill
                     className="object-contain rounded-lg"
@@ -148,7 +149,7 @@ export default async function MenuPage({
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {category.menuItems.map((item) => {
                     const { avg, count } = getAverageRating(item.id);
-                    const images = item.image ? [item.image] : [];
+                    const images = item.image ? [ensureAbsoluteImageUrl(item.image)] : [];
 
                     return (
                       <Card key={item.id} className="overflow-hidden hover:shadow-lg transition-shadow">

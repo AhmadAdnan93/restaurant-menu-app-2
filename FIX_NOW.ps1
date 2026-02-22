@@ -31,6 +31,7 @@ npx vercel --prod --yes
 
 Write-Host ""
 Write-Host "=== DONE! Test now ===" -ForegroundColor Green
+Write-Host "Railway: Set BaseUrl = $RailwayUrl (with https) for image uploads to work" -ForegroundColor Yellow
 Write-Host "https://resturent-app-taupe.vercel.app/login" -ForegroundColor White
 Write-Host "admin@restaurantmenu.com / Admin@123" -ForegroundColor Gray
 Start-Process "https://resturent-app-taupe.vercel.app/login"
