@@ -273,29 +273,19 @@ export default function RestaurantManagePage() {
   const doCreateMenuItem = async (attempt: number): Promise<boolean> => {
     const token = localStorage.getItem('auth_token');
     if (!token) return false;
-    const controller = new AbortController();
-    const t = setTimeout(() => controller.abort(), 12000); // 12s per attempt
     try {
-      const res = await fetch("/api/menu-items", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          ...menuItemForm,
-          categoryId: menuItemDialogOpen,
-        }),
-        signal: controller.signal,
-      });
-      clearTimeout(t);
-      if (res.ok) return true;
-      const err = await res.json().catch(() => ({}));
-      if ((res.status === 504 || res.status === 502) && attempt < 3) return false; // retriable
-      throw new Error(err.error || "Failed to create menu item");
+      await menuItemsApi.create(menuItemDialogOpen!, {
+        name: menuItemForm.name,
+        description: menuItemForm.description,
+        price: parseFloat(String(menuItemForm.price).replace(/[^\d.-]/g, '')) || 0,
+        image: menuItemForm.image || null,
+        order: menuItemForm.order,
+      }, token);
+      return true;
     } catch (e: any) {
-      clearTimeout(t);
-      if ((e?.name === "AbortError" || e?.message?.includes("timeout")) && attempt < 3) return false;
+      const msg = e?.message?.toLowerCase() || '';
+      const isRetriable = msg.includes('timeout') || msg.includes('504') || msg.includes('502') || e?.name === 'AbortError';
+      if (isRetriable && attempt < 3) return false;
       throw e;
     }
   };
@@ -658,7 +648,17 @@ export default function RestaurantManagePage() {
                     </Button>
                     <Dialog
                     open={menuItemDialogOpen === category.id}
-                    onOpenChange={(open) => setMenuItemDialogOpen(open ? category.id : null)}
+                    onOpenChange={(open) => {
+                      setMenuItemDialogOpen(open ? category.id : null);
+                      if (open && typeof window !== 'undefined') {
+                        const token = localStorage.getItem('auth_token');
+                        if (token) {
+                          fetch(`${window.location.origin}/api/backend/restaurants/${id}`, {
+                            headers: { Authorization: `Bearer ${token}` },
+                          }).catch(() => {});
+                        }
+                      }
+                    }}
                   >
                     <DialogTrigger asChild>
                       <Button size="sm">

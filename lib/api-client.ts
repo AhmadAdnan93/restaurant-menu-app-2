@@ -20,10 +20,11 @@ interface ApiConfig {
   body?: any;
   headers?: Record<string, string>;
   token?: string;
+  timeoutMs?: number;
 }
 
 async function apiRequest<T>(endpoint: string, config: ApiConfig = {}): Promise<T> {
-  const { method = 'GET', body, headers = {}, token } = config;
+  const { method = 'GET', body, headers = {}, token, timeoutMs = 10000 } = config;
 
   const requestHeaders: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -36,7 +37,7 @@ async function apiRequest<T>(endpoint: string, config: ApiConfig = {}): Promise<
 
   const baseUrl = getApiBaseUrl();
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 10000); // 10s - faster fail
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
   let response: Response;
   try {
     response = await fetch(`${baseUrl}${endpoint}`, {
@@ -199,6 +200,7 @@ export const menuItemsApi = {
       method: 'POST',
       body: data,
       token,
+      timeoutMs: 25000, // 25s for cold start
     }),
 
   update: (id: string, data: any, token: string) =>
