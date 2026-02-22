@@ -118,6 +118,10 @@ export default function AdminPage() {
   const handleDeleteClick = (restaurant: Restaurant) => {
     setRestaurantToDelete(restaurant);
     setDeleteDialogOpen(true);
+    if (typeof window !== 'undefined') {
+      const token = auth.getToken();
+      if (token) fetch(`${window.location.origin}/api/backend/restaurants?publishedOnly=false`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
+    }
   };
 
   const handleDeleteConfirm = async () => {

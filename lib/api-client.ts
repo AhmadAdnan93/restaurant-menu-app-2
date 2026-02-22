@@ -61,6 +61,7 @@ async function apiRequest<T>(endpoint: string, config: ApiConfig = {}): Promise<
     throw new Error(error.message || error.error || 'API request failed');
   }
 
+  if (response.status === 204) return {} as T;
   return response.json();
 }
 
@@ -148,19 +149,28 @@ export const restaurantsApi = {
       token,
     }),
 
-  delete: (id: string, token: string) => {
-    return fetch(`/api/restaurants/${id}`, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
-    }).then(async (response) => {
+  delete: async (id: string, token: string) => {
+    const baseUrl = getApiBaseUrl();
+    const controller = new AbortController();
+    const t = setTimeout(() => controller.abort(), 25000);
+    try {
+      const response = await fetch(`${baseUrl}/restaurants/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` },
+        signal: controller.signal,
+        cache: 'no-store',
+      });
+      clearTimeout(t);
       if (!response.ok) {
         const error = await response.json().catch(() => ({ message: response.statusText }));
         throw new Error(error.error || error.message || 'Failed to delete restaurant');
       }
       return response.status === 204 ? {} : response.json();
-    });
+    } catch (e: any) {
+      clearTimeout(t);
+      if (e?.name === 'AbortError') throw new Error('Request timed out. Try again.');
+      throw e;
+    }
   },
 };
 
@@ -187,6 +197,7 @@ export const categoriesApi = {
     apiRequest(`/categories/${id}`, {
       method: 'DELETE',
       token,
+      timeoutMs: 15000,
     }),
 };
 
@@ -214,6 +225,7 @@ export const menuItemsApi = {
     apiRequest(`/menuitems/${id}`, {
       method: 'DELETE',
       token,
+      timeoutMs: 15000,
     }),
 };
 
