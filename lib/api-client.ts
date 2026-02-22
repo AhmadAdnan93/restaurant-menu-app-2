@@ -36,7 +36,7 @@ async function apiRequest<T>(endpoint: string, config: ApiConfig = {}): Promise<
 
   const baseUrl = getApiBaseUrl();
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 15000); // 15s max - fail fast, retry
+  const timeout = setTimeout(() => controller.abort(), 10000); // 10s - faster fail
   let response: Response;
   try {
     response = await fetch(`${baseUrl}${endpoint}`, {
@@ -44,6 +44,7 @@ async function apiRequest<T>(endpoint: string, config: ApiConfig = {}): Promise<
       headers: requestHeaders,
       body: body ? JSON.stringify(body) : undefined,
       signal: controller.signal,
+      cache: "no-store" as RequestCache, // Always fresh data for menus/restaurants
     });
   } catch (err: any) {
     clearTimeout(timeout);
@@ -65,8 +66,8 @@ async function apiRequest<T>(endpoint: string, config: ApiConfig = {}): Promise<
 // Retry helper for cold-backend (login often fails on first try when Railway is sleeping)
 async function withRetryOn504<T>(
   fn: () => Promise<T>,
-  maxAttempts = 3,
-  delayMs = 5000
+  maxAttempts = 2,
+  delayMs = 2000
 ): Promise<T> {
   let lastError: Error | null = null;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {

@@ -76,7 +76,7 @@ export default function AdminPage() {
             data = await restaurantsApi.getAll(false);
             break;
           } catch (err) {
-            if (attempt < 3) await new Promise((r) => setTimeout(r, 5000));
+            if (attempt < 3) await new Promise((r) => setTimeout(r, 2000));
             else throw err;
           }
         }

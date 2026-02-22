@@ -30,7 +30,7 @@ export default function RestaurantsPage() {
         if (attempt === 3) {
           setError("Could not load restaurants. The backend may be slow.");
         } else {
-          await new Promise((r) => setTimeout(r, 5000));
+          await new Promise((r) => setTimeout(r, 2000));
         }
       }
     }

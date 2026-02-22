@@ -106,7 +106,7 @@ export default function RestaurantManagePage() {
       const isProd = typeof window !== "undefined" && !window.location.hostname.includes("localhost") && !window.location.hostname.includes("127.0.0.1");
       const apiUrl = isProd ? `${window.location.origin}/api/backend` : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api");
       const controller = new AbortController();
-      const t = setTimeout(() => controller.abort(), 15000);
+      const t = setTimeout(() => controller.abort(), 10000);
       const response = await fetch(`${apiUrl}/restaurants/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
         signal: controller.signal,
@@ -130,11 +130,6 @@ export default function RestaurantManagePage() {
 
   useEffect(() => {
     fetchRestaurant();
-    // Warm up backend (Railway cold start) so create actions are faster
-    if (typeof window !== "undefined" && !window.location.hostname.includes("localhost")) {
-      const base = "/api/backend";
-      fetch(`${base}/restaurants?publishedOnly=true`).catch(() => {});
-    }
   }, [fetchRestaurant]);
 
   const doCreateCategory = async (retry = false): Promise<boolean> => {
@@ -230,7 +225,7 @@ export default function RestaurantManagePage() {
       let ok = await doCreateCategory(false);
       if (!ok) {
         toast({ title: "Retrying...", description: "Backend warming up" });
-        await new Promise(r => setTimeout(r, 5000));
+        await new Promise(r => setTimeout(r, 2000));
         ok = await doCreateCategory(true);
       }
       if (ok) {
@@ -256,7 +251,7 @@ export default function RestaurantManagePage() {
     const token = localStorage.getItem('auth_token');
     if (!token) return false;
     const controller = new AbortController();
-    const t = setTimeout(() => controller.abort(), 15000); // 15s max per attempt
+    const t = setTimeout(() => controller.abort(), 12000); // 12s per attempt
     try {
       const res = await fetch("/api/menu-items", {
         method: "POST",
@@ -297,8 +292,8 @@ export default function RestaurantManagePage() {
           return;
         }
         if (attempt < 3) {
-          toast({ title: "Retrying...", description: `Attempt ${attempt} timed out. Retrying in 5s...` });
-          await new Promise(r => setTimeout(r, 5000));
+          toast({ title: "Retrying...", description: `Attempt ${attempt} timed out. Retrying...` });
+          await new Promise(r => setTimeout(r, 2000));
         }
       }
       throw new Error("Backend took too long after 3 attempts. Try again.");
@@ -619,12 +614,7 @@ export default function RestaurantManagePage() {
                     </Button>
                     <Dialog
                     open={menuItemDialogOpen === category.id}
-                    onOpenChange={(open) => {
-                      setMenuItemDialogOpen(open ? category.id : null);
-                      if (open && typeof window !== "undefined") {
-                        fetch(`${window.location.origin}/api/backend/restaurants/${id}`).catch(() => {});
-                      }
-                    }}
+                    onOpenChange={(open) => setMenuItemDialogOpen(open ? category.id : null)}
                   >
                     <DialogTrigger asChild>
                       <Button size="sm">
@@ -715,6 +705,7 @@ export default function RestaurantManagePage() {
                       </form>
                     </DialogContent>
                   </Dialog>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>

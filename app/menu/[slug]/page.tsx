@@ -9,6 +9,10 @@ import { QRCode } from "@/components/QRCode";
 import { restaurantsApi } from "@/lib/api-client";
 import { getMockRestaurantBySlug, type MockRestaurant } from "@/lib/mock-data";
 
+// Always fetch fresh menu data when admin adds/edits items
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 /** Get the base URL for QR codes - use current request host so it works on any deployment URL */
 async function getMenuBaseUrl(): Promise<string> {
   const headersList = await headers();
