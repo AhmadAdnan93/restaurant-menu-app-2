@@ -30,20 +30,13 @@ export default function LoginPage() {
         role: response.role,
         restaurantId: response.restaurantId,
       });
-
       toast({
         title: "Success!",
         description: "Logged in successfully",
       });
-
-      // Redirect based on role
-      if (response.role === "SUPER_ADMIN") {
-        router.push("/admin");
-      } else if (response.role === "RESTAURANT_OWNER") {
-        router.push("/admin");
-      } else {
-        router.push("/");
-      }
+      // Force refresh so client components see auth state
+      router.push(response.role === "SUPER_ADMIN" || response.role === "RESTAURANT_OWNER" ? "/admin" : "/");
+      router.refresh();
     } catch (error: any) {
       toast({
         title: "Error",

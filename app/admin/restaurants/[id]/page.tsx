@@ -70,6 +70,8 @@ export default function RestaurantManagePage() {
     image: "",
     order: 0,
   });
+  const [creatingCategory, setCreatingCategory] = useState(false);
+  const [creatingMenuItem, setCreatingMenuItem] = useState(false);
 
   const fetchRestaurant = useCallback(async () => {
     setLoading(true);
@@ -114,6 +116,7 @@ export default function RestaurantManagePage() {
 
   const handleCreateCategory = async (e: React.FormEvent) => {
     e.preventDefault();
+    setCreatingCategory(true);
     try {
       const token = localStorage.getItem('auth_token');
       if (!token) {
@@ -152,13 +155,15 @@ export default function RestaurantManagePage() {
         description: error.message || "Failed to create category.",
         variant: "destructive",
       });
+    } finally {
+      setCreatingCategory(false);
     }
   };
 
   const handleCreateMenuItem = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!menuItemDialogOpen) return;
-
+    setCreatingMenuItem(true);
     try {
       const token = localStorage.getItem('auth_token');
       if (!token) {
@@ -203,14 +208,16 @@ export default function RestaurantManagePage() {
         description: error.message || "Failed to create menu item.",
         variant: "destructive",
       });
+    } finally {
+      setCreatingMenuItem(false);
     }
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-gray-600">Loading restaurant...</p>
+          <p className="text-gray-600 dark:text-gray-400">Loading restaurant...</p>
         </div>
       </div>
     );
@@ -304,8 +311,8 @@ export default function RestaurantManagePage() {
                     }
                   />
                 </div>
-                <Button type="submit" className="w-full">
-                  Create Category
+                <Button type="submit" className="w-full" disabled={creatingCategory}>
+                  {creatingCategory ? "Creating..." : "Create Category"}
                 </Button>
               </form>
             </DialogContent>
@@ -412,8 +419,8 @@ export default function RestaurantManagePage() {
                             }
                           />
                         </div>
-                        <Button type="submit" className="w-full">
-                          Create Item
+                        <Button type="submit" className="w-full" disabled={creatingMenuItem}>
+                          {creatingMenuItem ? "Creating... (may take a minute)" : "Create Item"}
                         </Button>
                       </form>
                     </DialogContent>
