@@ -238,7 +238,7 @@ export const uploadApi = {
 
     const baseUrl = getApiBaseUrl();
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 60000); // 60s for uploads
+    const timeout = setTimeout(() => controller.abort(), 90000); // 90s for uploads (cold start + processing)
     let response: Response;
     try {
       response = await fetch(`${baseUrl}/upload/image`, {

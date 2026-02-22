@@ -69,9 +69,12 @@ async function proxy(
       }
     });
 
-    const body = method !== "GET" ? await request.text() : undefined;
+    // Use arrayBuffer for body to preserve binary data (multipart/form-data for image uploads)
+    const body = method !== "GET" ? await request.arrayBuffer() : undefined;
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 25000); // 25s timeout
+    const isUpload = pathStr.includes("upload");
+    const timeoutMs = isUpload ? 90000 : 30000; // 90s for uploads (cold start + processing), 30s for others
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
     let res: Response;
     try {
       res = await fetch(fullUrl, { method, headers, body, signal: controller.signal });
