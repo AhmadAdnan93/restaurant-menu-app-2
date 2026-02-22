@@ -30,7 +30,7 @@ interface Restaurant {
   _count?: { categories: number };
 }
 
-const SLOW_THRESHOLD_MS = 8000; // Show "Wake backend" after 8s
+const SLOW_THRESHOLD_MS = 5000; // Show "Wake backend" after 5s
 
 export default function AdminPage() {
   const router = useRouter();
@@ -112,7 +112,7 @@ export default function AdminPage() {
         headers: { Authorization: `Bearer ${token}` },
       }).catch(() => {});
     }
-    setTimeout(fetchRestaurants, 2000);
+    setTimeout(fetchRestaurants, 1000);
   };
 
   const handleDeleteClick = (restaurant: Restaurant) => {

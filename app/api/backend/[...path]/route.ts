@@ -73,7 +73,7 @@ async function proxy(
     const body = method !== "GET" ? await request.arrayBuffer() : undefined;
     const controller = new AbortController();
     const isUpload = pathStr.includes("upload");
-    const timeoutMs = isUpload ? 90000 : 30000; // 90s for uploads (cold start + processing), 30s for others
+    const timeoutMs = isUpload ? 60000 : 25000; // 60s for uploads, 25s for others
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
     let res: Response;
     try {

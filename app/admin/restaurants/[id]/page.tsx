@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -77,6 +77,7 @@ export default function RestaurantManagePage() {
   });
   const [loading, setLoading] = useState(false);
   const [fetchFailed, setFetchFailed] = useState(false);
+  const [notFound404, setNotFound404] = useState(false);
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
   const [menuItemDialogOpen, setMenuItemDialogOpen] = useState<string | null>(null);
   const [categoryForm, setCategoryForm] = useState({
@@ -95,21 +96,28 @@ export default function RestaurantManagePage() {
   const [creatingMenuItem, setCreatingMenuItem] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [editingMenuItem, setEditingMenuItem] = useState<MenuItem | null>(null);
+  const retryCountRef = useRef(0);
 
   const fetchRestaurant = useCallback(async () => {
     setLoading(true);
     setFetchFailed(false);
+    setNotFound404(false);
     try {
       const token = localStorage.getItem("auth_token");
-      if (!token) return;
+      if (!token) {
+        setLoading(false);
+        router.push("/login");
+        return;
+      }
 
       const isProd = typeof window !== "undefined" && !window.location.hostname.includes("localhost") && !window.location.hostname.includes("127.0.0.1");
       const apiUrl = isProd ? `${window.location.origin}/api/backend` : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api");
       const controller = new AbortController();
-      const t = setTimeout(() => controller.abort(), 10000);
+      const t = setTimeout(() => controller.abort(), 20000);
       const response = await fetch(`${apiUrl}/restaurants/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
         signal: controller.signal,
+        cache: "no-store",
       });
       clearTimeout(t);
 
@@ -117,20 +125,35 @@ export default function RestaurantManagePage() {
         const detail = await response.json();
         setRestaurant(detail);
         setFetchFailed(false);
+        setNotFound404(false);
       } else if (response.status === 404) {
         setRestaurant(null);
+        setNotFound404(true);
+        setFetchFailed(false);
+      } else {
+        setFetchFailed(true);
       }
     } catch (error) {
       console.error("Error fetching restaurant:", error);
       setFetchFailed(true);
+      setNotFound404(false);
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, router]);
 
   useEffect(() => {
+    retryCountRef.current = 0;
     fetchRestaurant();
   }, [fetchRestaurant]);
+
+  // Auto-retry once when fetch fails (helps with cold start)
+  useEffect(() => {
+    if (!fetchFailed || loading || retryCountRef.current >= 1) return;
+    retryCountRef.current += 1;
+    const t = setTimeout(() => fetchRestaurant(), 2500);
+    return () => clearTimeout(t);
+  }, [fetchFailed, loading, fetchRestaurant]);
 
   const doCreateCategory = async (retry = false): Promise<boolean> => {
     const token = localStorage.getItem('auth_token');
@@ -309,7 +332,8 @@ export default function RestaurantManagePage() {
   };
 
   const hasData = restaurant && (restaurant.categories?.length !== undefined || restaurant.name);
-  const showNotFound = !hasData && !loading;
+  const showNotFound = notFound404 && !hasData;
+  const showFetchFailed = fetchFailed && !hasData && !loading;
   const showLoading = !hasData && loading;
 
   if (showLoading) {
@@ -323,6 +347,26 @@ export default function RestaurantManagePage() {
               Retry
             </Button>
           )}
+        </div>
+      </div>
+    );
+  }
+
+  if (showFetchFailed) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center max-w-md">
+          <p className="text-lg mb-2">Could not load restaurant</p>
+          <p className="text-gray-600 text-sm mb-6">The backend may be slow or offline. Try again.</p>
+          <div className="flex gap-3 justify-center">
+            <Button onClick={fetchRestaurant}>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Retry
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/admin">Back to Admin</Link>
+            </Button>
+          </div>
         </div>
       </div>
     );
