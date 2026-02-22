@@ -19,8 +19,12 @@ if ($RailwayUrl -match "YOUR-RAILWAY-URL|your-railway-url|your-app") {
 }
 
 $BackendApiUrl = "$RailwayUrl/api"
+$AppUrl = "https://resturent-app-taupe.vercel.app"
+
 Write-Host "Adding BACKEND_API_URL to Vercel..." -ForegroundColor Cyan
 $BackendApiUrl | npx vercel env add BACKEND_API_URL production --yes --force
+Write-Host "Adding NEXT_PUBLIC_APP_URL for QR codes..." -ForegroundColor Cyan
+$AppUrl | npx vercel env add NEXT_PUBLIC_APP_URL production --yes --force
 
 Write-Host "Redeploying Vercel..." -ForegroundColor Cyan
 npx vercel --prod --yes

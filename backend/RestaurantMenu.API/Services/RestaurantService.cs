@@ -14,7 +14,7 @@ public class RestaurantService : IRestaurantService
         _context = context;
     }
 
-    public async Task<RestaurantResponseDto> CreateRestaurantAsync(RestaurantCreateDto dto, string ownerUserId)
+    public async Task<RestaurantResponseDto> CreateRestaurantAsync(RestaurantCreateDto dto, string ownerUserId, bool isSuperAdmin = false)
     {
         // Validate required fields
         if (string.IsNullOrWhiteSpace(dto.Name))
@@ -27,13 +27,16 @@ public class RestaurantService : IRestaurantService
             throw new InvalidOperationException("Restaurant slug is required.");
         }
 
-        // Check if user already owns a restaurant
-        var existingOwner = await _context.RestaurantOwners
-            .FirstOrDefaultAsync(ro => ro.UserId == ownerUserId);
-        
-        if (existingOwner != null)
+        // Check if user already owns a restaurant (SUPER_ADMIN can own multiple)
+        if (!isSuperAdmin)
         {
-            throw new InvalidOperationException("You already own a restaurant. Each user can only own one restaurant.");
+            var existingOwner = await _context.RestaurantOwners
+                .FirstOrDefaultAsync(ro => ro.UserId == ownerUserId);
+
+            if (existingOwner != null)
+            {
+                throw new InvalidOperationException("You already own a restaurant. Each user can only own one restaurant.");
+            }
         }
 
         // Check if slug already exists

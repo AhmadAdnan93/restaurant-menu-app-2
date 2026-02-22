@@ -46,10 +46,12 @@ public class RestaurantsController : ControllerBase
     {
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (userId == null) return Unauthorized();
+        var role = User.FindFirst(ClaimTypes.Role)?.Value;
+        var isSuperAdmin = role == "SUPER_ADMIN";
 
         // Log incoming data for debugging
         Console.WriteLine($"=== Create Restaurant Request ===");
-        Console.WriteLine($"UserId: {userId}");
+        Console.WriteLine($"UserId: {userId}, Role: {role}");
         Console.WriteLine($"Name: {dto?.Name ?? "null"}");
         Console.WriteLine($"Slug: {dto?.Slug ?? "null"}");
         Console.WriteLine($"Logo: {dto?.Logo ?? "null"}");
@@ -58,7 +60,7 @@ public class RestaurantsController : ControllerBase
 
         try
         {
-            var restaurant = await _restaurantService.CreateRestaurantAsync(dto, userId);
+            var restaurant = await _restaurantService.CreateRestaurantAsync(dto, userId, isSuperAdmin);
             Console.WriteLine($"Restaurant created successfully: {restaurant.Id}");
             return CreatedAtAction(nameof(GetRestaurantById), new { id = restaurant.Id }, restaurant);
         }

@@ -35,15 +35,28 @@ async function apiRequest<T>(endpoint: string, config: ApiConfig = {}): Promise<
   }
 
   const baseUrl = getApiBaseUrl();
-  const response = await fetch(`${baseUrl}${endpoint}`, {
-    method,
-    headers: requestHeaders,
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30000); // 30s max wait
+  let response: Response;
+  try {
+    response = await fetch(`${baseUrl}${endpoint}`, {
+      method,
+      headers: requestHeaders,
+      body: body ? JSON.stringify(body) : undefined,
+      signal: controller.signal,
+    });
+  } catch (err: any) {
+    clearTimeout(timeout);
+    if (err?.name === 'AbortError') {
+      throw new Error('Request timed out. The server may be slow or unavailable. Please try again.');
+    }
+    throw err;
+  }
+  clearTimeout(timeout);
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({ message: response.statusText }));
-    throw new Error(error.message || 'API request failed');
+    throw new Error(error.message || error.error || 'API request failed');
   }
 
   return response.json();
@@ -224,14 +237,27 @@ export const uploadApi = {
     });
 
     const baseUrl = getApiBaseUrl();
-    const response = await fetch(`${baseUrl}/upload/image`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        // Don't set Content-Type - browser will set it with boundary for FormData
-      },
-      body: formData,
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 60000); // 60s for uploads
+    let response: Response;
+    try {
+      response = await fetch(`${baseUrl}/upload/image`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          // Don't set Content-Type - browser will set it with boundary for FormData
+        },
+        body: formData,
+        signal: controller.signal,
+      });
+    } catch (err: any) {
+      clearTimeout(timeout);
+      if (err?.name === 'AbortError') {
+        throw new Error('Upload timed out. Please try again with a smaller image.');
+      }
+      throw err;
+    }
+    clearTimeout(timeout);
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ error: 'Upload failed' }));

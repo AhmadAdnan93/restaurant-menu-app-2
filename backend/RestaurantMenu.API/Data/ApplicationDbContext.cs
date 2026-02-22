@@ -108,9 +108,11 @@ public class ApplicationDbContext : DbContext
         });
 
         // RestaurantOwner Configuration
+        // UserId: non-unique so SUPER_ADMIN can own multiple restaurants
+        // RestaurantId: unique so each restaurant has one owner
         modelBuilder.Entity<RestaurantOwner>(entity =>
         {
-            entity.HasIndex(ro => ro.UserId).IsUnique();
+            entity.HasIndex(ro => ro.UserId);
             entity.HasIndex(ro => ro.RestaurantId).IsUnique();
         });
     }

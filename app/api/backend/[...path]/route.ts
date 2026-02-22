@@ -38,7 +38,8 @@ async function proxy(
   params: Promise<{ path: string[] }>,
   method: string
 ) {
-  const base = (BACKEND_URL?.trim() || process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api").replace(/\/$/, "");
+  const raw = (BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api").trim().replace(/\s/g, "");
+  const base = raw.replace(/\/$/, "");
   const isProduction = process.env.VERCEL === "1";
   if (isProduction && (!base || base.includes("localhost") || base.includes("127.0.0.1"))) {
     return NextResponse.json(
@@ -69,7 +70,23 @@ async function proxy(
     });
 
     const body = method !== "GET" ? await request.text() : undefined;
-    const res = await fetch(fullUrl, { method, headers, body });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 25000); // 25s timeout
+    let res: Response;
+    try {
+      res = await fetch(fullUrl, { method, headers, body, signal: controller.signal });
+    } catch (err: any) {
+      clearTimeout(timeout);
+      if (err?.name === "AbortError") {
+        console.error("Backend timeout:", fullUrl);
+        return NextResponse.json(
+          { message: "Backend took too long to respond. Try again." },
+          { status: 504 }
+        );
+      }
+      throw err;
+    }
+    clearTimeout(timeout);
     const data = await res.text();
     return new NextResponse(data, {
       status: res.status,

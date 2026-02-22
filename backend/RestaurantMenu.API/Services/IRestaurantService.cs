@@ -4,7 +4,7 @@ namespace RestaurantMenu.API.Services;
 
 public interface IRestaurantService
 {
-    Task<RestaurantResponseDto> CreateRestaurantAsync(RestaurantCreateDto dto, string ownerUserId);
+    Task<RestaurantResponseDto> CreateRestaurantAsync(RestaurantCreateDto dto, string ownerUserId, bool isSuperAdmin = false);
     Task<RestaurantResponseDto?> GetRestaurantByIdAsync(string id);
     Task<RestaurantDetailDto?> GetRestaurantBySlugAsync(string slug);
     Task<List<RestaurantResponseDto>> GetAllRestaurantsAsync(bool publishedOnly = false);
