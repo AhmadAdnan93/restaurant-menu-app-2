@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Plus, Edit, Trash2 } from "lucide-react";
+import { ArrowLeft, Plus, Edit, Trash2, RefreshCw } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import {
   Dialog,
@@ -47,15 +47,35 @@ interface Restaurant {
   categories: Category[];
 }
 
+// Get restaurant from admin list (instant, no API wait)
+function getFromAdminList(id: string): { name: string; slug: string } | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = sessionStorage.getItem("admin_restaurants_list");
+    if (!raw) return null;
+    const list = JSON.parse(raw);
+    const r = list?.find((x: any) => x.id === id);
+    return r ? { name: r.name, slug: r.slug } : null;
+  } catch {
+    return null;
+  }
+}
+
 export default function RestaurantManagePage() {
   const params = useParams();
   const router = useRouter();
   const { toast } = useToast();
-  // Initialize with mock data immediately
-  const [restaurant, setRestaurant] = useState<Restaurant | null>(
-    getMockRestaurantById(params.id as string) || null
-  );
+  const id = params.id as string;
+  // Instant: use admin list or mock (for UUIDs mock returns null)
+  const fromList = getFromAdminList(id);
+  const mockRest = getMockRestaurantById(id);
+  const [restaurant, setRestaurant] = useState<Restaurant | null>(() => {
+    if (mockRest) return mockRest;
+    if (fromList) return { id, name: fromList.name, slug: fromList.slug, logo: null, description: null, categories: [] };
+    return null;
+  });
   const [loading, setLoading] = useState(false);
+  const [fetchFailed, setFetchFailed] = useState(false);
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
   const [menuItemDialogOpen, setMenuItemDialogOpen] = useState<string | null>(null);
   const [categoryForm, setCategoryForm] = useState({
@@ -73,34 +93,36 @@ export default function RestaurantManagePage() {
 
   const fetchRestaurant = useCallback(async () => {
     setLoading(true);
+    setFetchFailed(false);
     try {
-      const token = localStorage.getItem('auth_token');
-      if (!token) {
-        console.log("No auth token");
-        return;
-      }
+      const token = localStorage.getItem("auth_token");
+      if (!token) return;
 
-      // Fetch restaurant by ID from backend
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
-      const response = await fetch(`${API_BASE_URL}/restaurants/${params.id}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+      const isProd = typeof window !== "undefined" && !window.location.hostname.includes("localhost") && !window.location.hostname.includes("127.0.0.1");
+      const apiUrl = isProd ? `${window.location.origin}/api/backend` : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api");
+      const controller = new AbortController();
+      const t = setTimeout(() => controller.abort(), 15000);
+
+      const response = await fetch(`${apiUrl}/restaurants/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        signal: controller.signal,
       });
+      clearTimeout(t);
 
       if (response.ok) {
         const detail = await response.json();
         setRestaurant(detail);
+        setFetchFailed(false);
       } else if (response.status === 404) {
-        console.log("Restaurant not found");
         setRestaurant(null);
       }
     } catch (error) {
       console.error("Error fetching restaurant:", error);
+      setFetchFailed(true);
     } finally {
       setLoading(false);
     }
-  }, [params.id]);
+  }, [id]);
 
   useEffect(() => {
     // Try to fetch from API, but don't block
@@ -201,19 +223,29 @@ export default function RestaurantManagePage() {
     }
   };
 
-  if (loading) {
+  const hasData = restaurant && (restaurant.categories?.length !== undefined || restaurant.name);
+  const showNotFound = !hasData && !loading;
+  const showLoading = !hasData && loading;
+
+  if (showLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-gray-600">Loading restaurant...</p>
+          <p className="text-gray-600 mb-2">Loading restaurant...</p>
+          {fetchFailed && (
+            <Button variant="outline" size="sm" onClick={fetchRestaurant} className="mt-2">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Retry
+            </Button>
+          )}
         </div>
       </div>
     );
   }
 
-  if (!restaurant) {
+  if (showNotFound) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <p className="text-lg mb-4">Restaurant not found</p>
           <Button asChild>
@@ -236,7 +268,7 @@ export default function RestaurantManagePage() {
             </Button>
             <div>
               <h1 className="text-3xl font-bold text-gray-900">
-                {restaurant.name}
+                {restaurant!.name}
               </h1>
               <p className="text-gray-600">Manage menu and categories</p>
             </div>
@@ -245,6 +277,17 @@ export default function RestaurantManagePage() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {(loading || fetchFailed) && (
+          <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg flex items-center justify-between gap-4">
+            {loading ? <p className="text-amber-800 text-sm">Loading details...</p> : <p className="text-amber-800 text-sm">Load failed. Backend may be cold.</p>}
+            {fetchFailed && (
+              <Button variant="outline" size="sm" onClick={fetchRestaurant}>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Retry
+              </Button>
+            )}
+          </div>
+        )}
         <div className="mb-6">
           <Dialog open={categoryDialogOpen} onOpenChange={setCategoryDialogOpen}>
             <DialogTrigger asChild>
@@ -308,7 +351,7 @@ export default function RestaurantManagePage() {
         </div>
 
         <div className="space-y-8">
-          {(restaurant.categories || []).map((category) => (
+          {(restaurant!.categories || []).map((category) => (
             <Card key={category.id}>
               <CardHeader>
                 <div className="flex items-center justify-between">

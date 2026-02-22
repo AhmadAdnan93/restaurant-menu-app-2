@@ -36,6 +36,13 @@ export default function LoginPage() {
         description: "Logged in successfully",
       });
 
+      // Warm backend so admin loads fast
+      if (typeof window !== "undefined") {
+        fetch(`${window.location.origin}/api/backend/restaurants?publishedOnly=false`, {
+          headers: { Authorization: `Bearer ${response.token}` },
+        }).catch(() => {});
+      }
+
       // Redirect based on role
       if (response.role === "SUPER_ADMIN") {
         router.push("/admin");

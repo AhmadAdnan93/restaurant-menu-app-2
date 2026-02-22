@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -14,10 +14,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
-import { Plus, Store, Package, Star, Trash2 } from "lucide-react";
+import { Plus, Store, Trash2, RefreshCw } from "lucide-react";
 import { restaurantsApi } from "@/lib/api-client";
 import { auth } from "@/lib/auth";
 import { getMockRestaurants } from "@/lib/mock-data";
+import { getCachedRestaurants, setCachedRestaurants } from "@/lib/admin-cache";
 
 interface Restaurant {
   id: string;
@@ -26,48 +27,83 @@ interface Restaurant {
   qrCode: string;
   createdAt: string;
   categoryCount?: number;
-  _count?: {
-    categories: number;
-  };
+  _count?: { categories: number };
 }
+
+const SLOW_THRESHOLD_MS = 12000; // Show "Wake backend" after 12s
 
 export default function AdminPage() {
   const router = useRouter();
   const { toast } = useToast();
-  // Initialize with mock data immediately
-  const [restaurants, setRestaurants] = useState<Restaurant[]>(getMockRestaurants());
-  const [loading, setLoading] = useState(false);
+  // Instant load: cache first, then mock, then API (< 2 sec rule)
+  const [restaurants, setRestaurants] = useState<Restaurant[]>(() => {
+    const cached = getCachedRestaurants();
+    if (cached?.length) {
+      const mapped = cached.map((r) => ({ ...r, _count: { categories: r.categoryCount ?? r._count?.categories ?? 0 } }));
+      if (typeof window !== "undefined") sessionStorage.setItem("admin_restaurants_list", JSON.stringify(mapped));
+      return mapped;
+    }
+    return getMockRestaurants();
+  });
+  const [refreshing, setRefreshing] = useState(false);
+  const [showWakeRetry, setShowWakeRetry] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [restaurantToDelete, setRestaurantToDelete] = useState<Restaurant | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const slowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    // Check authentication
     if (!auth.isAuthenticated() || (!auth.isSuperAdmin() && !auth.isRestaurantOwner())) {
-      router.push('/login');
+      router.push("/login");
       return;
     }
     fetchRestaurants();
+    return () => {
+      if (slowTimerRef.current) clearTimeout(slowTimerRef.current);
+    };
   }, [router]);
 
   const fetchRestaurants = async () => {
-    setLoading(true);
+    setRefreshing(true);
+    setShowWakeRetry(false);
+    slowTimerRef.current = setTimeout(() => setShowWakeRetry(true), SLOW_THRESHOLD_MS);
     try {
       const token = auth.getToken();
       if (token) {
         const data = await restaurantsApi.getAll(false);
         if (Array.isArray(data) && data.length > 0) {
-          setRestaurants(data.map((r: any) => ({
+          const mapped = data.map((r: any) => ({
             ...r,
-            _count: { categories: r.categoryCount || 0 }
-          })));
+            _count: { categories: r.categoryCount ?? 0 },
+          }));
+          setRestaurants(mapped);
+          setCachedRestaurants(mapped);
+          if (typeof window !== "undefined") {
+            sessionStorage.setItem("admin_restaurants_list", JSON.stringify(mapped));
+          }
         }
       }
     } catch (error) {
-      console.log("API error, using mock data:", error);
+      console.log("API error, using cached/mock data:", error);
     } finally {
-      setLoading(false);
+      setRefreshing(false);
+      setShowWakeRetry(false);
+      if (slowTimerRef.current) {
+        clearTimeout(slowTimerRef.current);
+        slowTimerRef.current = null;
+      }
     }
+  };
+
+  const wakeAndRetry = () => {
+    setShowWakeRetry(false);
+    const token = auth.getToken();
+    if (token && typeof window !== "undefined") {
+      fetch(`${window.location.origin}/api/backend/restaurants?publishedOnly=false`, {
+        headers: { Authorization: `Bearer ${token}` },
+      }).catch(() => {});
+    }
+    setTimeout(fetchRestaurants, 2000);
   };
 
   const handleDeleteClick = (restaurant: Restaurant) => {
@@ -98,7 +134,6 @@ export default function AdminPage() {
         description: "Restaurant deleted successfully.",
       });
 
-      // Remove from list
       setRestaurants(restaurants.filter(r => r.id !== restaurantToDelete.id));
       setDeleteDialogOpen(false);
       setRestaurantToDelete(null);
@@ -133,6 +168,18 @@ export default function AdminPage() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {showWakeRetry && (
+          <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg flex items-center justify-between gap-4">
+            <p className="text-amber-800 text-sm">Backend may be cold. Wake it and retry?</p>
+            <Button onClick={wakeAndRetry} variant="outline" size="sm">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Wake backend & Retry
+            </Button>
+          </div>
+        )}
+        {refreshing && restaurants.length > 0 && (
+          <p className="text-sm text-gray-500 mb-4">Refreshing...</p>
+        )}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {restaurants.map((restaurant) => (
             <Card key={restaurant.id} className="hover:shadow-lg transition-shadow">
@@ -188,7 +235,6 @@ export default function AdminPage() {
         )}
       </main>
 
-      {/* Delete Confirmation Dialog */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -221,4 +267,3 @@ export default function AdminPage() {
     </div>
   );
 }
-
