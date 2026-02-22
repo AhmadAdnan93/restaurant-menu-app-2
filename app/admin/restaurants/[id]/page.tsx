@@ -180,24 +180,34 @@ export default function RestaurantManagePage() {
     }
   };
 
-  const doCreateMenuItem = async (retry = false): Promise<boolean> => {
+  const doCreateMenuItem = async (attempt: number): Promise<boolean> => {
     const token = localStorage.getItem('auth_token');
     if (!token) return false;
-    const res = await fetch("/api/menu-items", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        ...menuItemForm,
-        categoryId: menuItemDialogOpen,
-      }),
-    });
-    if (res.ok) return true;
-    const err = await res.json().catch(() => ({}));
-    if (res.status === 504 && !retry) return false;
-    throw new Error(err.error || "Failed to create menu item");
+    const controller = new AbortController();
+    const t = setTimeout(() => controller.abort(), 15000); // 15s max per attempt
+    try {
+      const res = await fetch("/api/menu-items", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          ...menuItemForm,
+          categoryId: menuItemDialogOpen,
+        }),
+        signal: controller.signal,
+      });
+      clearTimeout(t);
+      if (res.ok) return true;
+      const err = await res.json().catch(() => ({}));
+      if ((res.status === 504 || res.status === 502) && attempt < 3) return false; // retriable
+      throw new Error(err.error || "Failed to create menu item");
+    } catch (e: any) {
+      clearTimeout(t);
+      if ((e?.name === "AbortError" || e?.message?.includes("timeout")) && attempt < 3) return false;
+      throw e;
+    }
   };
 
   const handleCreateMenuItem = async (e: React.FormEvent) => {
@@ -205,20 +215,21 @@ export default function RestaurantManagePage() {
     if (!menuItemDialogOpen) return;
     setCreatingMenuItem(true);
     try {
-      let ok = await doCreateMenuItem(false);
-      if (!ok) {
-        toast({ title: "Retrying...", description: "Backend warming up, please wait" });
-        await new Promise(r => setTimeout(r, 6000));
-        ok = await doCreateMenuItem(true);
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        const ok = await doCreateMenuItem(attempt);
+        if (ok) {
+          toast({ title: "Success!", description: "Menu item created." });
+          setMenuItemDialogOpen(null);
+          setMenuItemForm({ name: "", description: "", price: "", image: "", order: 0 });
+          fetchRestaurant();
+          return;
+        }
+        if (attempt < 3) {
+          toast({ title: "Retrying...", description: `Attempt ${attempt} timed out. Retrying in 5s...` });
+          await new Promise(r => setTimeout(r, 5000));
+        }
       }
-      if (ok) {
-        toast({ title: "Success!", description: "Menu item created." });
-        setMenuItemDialogOpen(null);
-        setMenuItemForm({ name: "", description: "", price: "", image: "", order: 0 });
-        fetchRestaurant();
-      } else {
-        throw new Error("Backend took too long. Try again in a moment.");
-      }
+      throw new Error("Backend took too long after 3 attempts. Try again.");
     } catch (error: any) {
       toast({
         title: "Error",
@@ -370,9 +381,12 @@ export default function RestaurantManagePage() {
                   </div>
                   <Dialog
                     open={menuItemDialogOpen === category.id}
-                    onOpenChange={(open) =>
-                      setMenuItemDialogOpen(open ? category.id : null)
-                    }
+                    onOpenChange={(open) => {
+                      setMenuItemDialogOpen(open ? category.id : null);
+                      if (open && typeof window !== "undefined") {
+                        fetch(`${window.location.origin}/api/backend/restaurants/${id}`).catch(() => {});
+                      }
+                    }}
                   >
                     <DialogTrigger asChild>
                       <Button size="sm">

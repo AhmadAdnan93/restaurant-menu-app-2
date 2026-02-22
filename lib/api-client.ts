@@ -36,7 +36,7 @@ async function apiRequest<T>(endpoint: string, config: ApiConfig = {}): Promise<
 
   const baseUrl = getApiBaseUrl();
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30000); // 30s max wait
+  const timeout = setTimeout(() => controller.abort(), 15000); // 15s max - fail fast, retry
   let response: Response;
   try {
     response = await fetch(`${baseUrl}${endpoint}`, {

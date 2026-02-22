@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
 
     const url = `${API_BASE_URL}/categories/restaurant/${restaurantId}`;
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 90000); // 90s for cold backend
+    const timeout = setTimeout(() => controller.abort(), 20000); // 20s - fail fast, client retries
     let response: Response;
     try {
       response = await fetch(url, {
