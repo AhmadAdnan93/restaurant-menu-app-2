@@ -30,12 +30,10 @@ export default function LoginPage() {
         role: response.role,
         restaurantId: response.restaurantId,
       });
-
       toast({
         title: "Success!",
         description: "Logged in successfully",
       });
-
       // Warm backend so admin loads fast
       if (typeof window !== "undefined") {
         fetch(`${window.location.origin}/api/backend/restaurants?publishedOnly=false`, {
@@ -43,14 +41,8 @@ export default function LoginPage() {
         }).catch(() => {});
       }
 
-      // Redirect based on role
-      if (response.role === "SUPER_ADMIN") {
-        router.push("/admin");
-      } else if (response.role === "RESTAURANT_OWNER") {
-        router.push("/admin");
-      } else {
-        router.push("/");
-      }
+      router.push(response.role === "SUPER_ADMIN" || response.role === "RESTAURANT_OWNER" ? "/admin" : "/");
+      router.refresh();
     } catch (error: any) {
       toast({
         title: "Error",

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const API_BASE_URL = process.env.BACKEND_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL = (process.env.BACKEND_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api').trim().replace(/\s/g, '').replace(/\/$/, '') || 'http://localhost:5000/api';
 
 export async function GET(request: NextRequest) {
   try {
@@ -44,7 +44,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const response = await fetch(`${API_BASE_URL}/restaurants`, {
+    const base = API_BASE_URL.replace(/\/$/, '').replace(/\s/g, '');
+    const url = `${base}/restaurants`;
+    const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -53,20 +55,20 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify(body),
     });
 
+    const data = await response.json().catch(() => ({}));
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ message: 'Failed to create restaurant' }));
+      console.error("Backend create restaurant failed:", response.status, data);
       return NextResponse.json(
-        { error: errorData.message || "Failed to create restaurant" },
+        { error: data.message || data.error || "Failed to create restaurant" },
         { status: response.status }
       );
     }
 
-    const data = await response.json();
     return NextResponse.json(data, { status: 201 });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error creating restaurant:", error);
     return NextResponse.json(
-      { error: "Failed to create restaurant" },
+      { error: error.message || "Failed to create restaurant" },
       { status: 500 }
     );
   }

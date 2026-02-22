@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ensureAbsoluteImageUrl } from "@/lib/image-utils";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -49,7 +50,7 @@ export function ImageSlider({ images, alt, className }: ImageSliderProps) {
             )}
           >
             <Image
-              src={image}
+              src={ensureAbsoluteImageUrl(image)}
               alt={`${alt} - Image ${index + 1}`}
               fill
               className="object-cover"

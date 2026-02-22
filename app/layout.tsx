@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
+import { ThemeProvider } from "@/components/ThemeProvider";
+import { LocaleProvider } from "@/components/LocaleProvider";
+import { ThemeLocaleToggle } from "@/components/ThemeLocaleToggle";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -16,10 +19,24 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){var t=document.documentElement;var l=localStorage.getItem('locale')||'en';var th=localStorage.getItem('theme')||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');t.setAttribute('dir',l==='ar'?'rtl':'ltr');t.setAttribute('lang',l==='ar'?'ar':'en');t.classList.toggle('dark',th==='dark');})();`,
+          }}
+        />
+      </head>
       <body className={inter.className}>
-        {children}
-        <Toaster />
+        <ThemeProvider>
+          <LocaleProvider>
+            {children}
+            <div className="fixed bottom-4 right-4 z-50">
+              <ThemeLocaleToggle />
+            </div>
+            <Toaster />
+          </LocaleProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

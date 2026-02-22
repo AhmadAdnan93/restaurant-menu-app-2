@@ -35,15 +35,28 @@ async function apiRequest<T>(endpoint: string, config: ApiConfig = {}): Promise<
   }
 
   const baseUrl = getApiBaseUrl();
-  const response = await fetch(`${baseUrl}${endpoint}`, {
-    method,
-    headers: requestHeaders,
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30000); // 30s max wait
+  let response: Response;
+  try {
+    response = await fetch(`${baseUrl}${endpoint}`, {
+      method,
+      headers: requestHeaders,
+      body: body ? JSON.stringify(body) : undefined,
+      signal: controller.signal,
+    });
+  } catch (err: any) {
+    clearTimeout(timeout);
+    if (err?.name === 'AbortError') {
+      throw new Error('Request timed out. The server may be slow or unavailable. Please try again.');
+    }
+    throw err;
+  }
+  clearTimeout(timeout);
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({ message: response.statusText }));
-    throw new Error(error.message || 'API request failed');
+    throw new Error(error.message || error.error || 'API request failed');
   }
 
   return response.json();
@@ -240,24 +253,40 @@ export const paymentsApi = {
 
 // Upload API
 export const uploadApi = {
-  uploadImage: async (file: File, token: string): Promise<{ url: string }> => {
+  uploadImage: async (file: File, token: string, retry = false): Promise<{ url: string }> => {
     const formData = new FormData();
     formData.append('file', file, file.name);
 
     const baseUrl = getApiBaseUrl();
-    const response = await fetch(`${baseUrl}/upload/image`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      body: formData,
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 90000);
+    let response: Response;
+    try {
+      response = await fetch(`${baseUrl}/upload/image`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+        signal: controller.signal,
+      });
+    } catch (err: any) {
+      clearTimeout(timeout);
+      if (err?.name === 'AbortError' && !retry) {
+        await new Promise(r => setTimeout(r, 5000));
+        return uploadApi.uploadImage(file, token, true);
+      }
+      if (err?.name === 'AbortError') throw new Error('Upload timed out. Try again.');
+      throw err;
+    }
+    clearTimeout(timeout);
 
     if (!response.ok) {
+      if (response.status === 504 && !retry) {
+        await new Promise(r => setTimeout(r, 5000));
+        return uploadApi.uploadImage(file, token, true);
+      }
       const errorData = await response.json().catch(() => ({ error: 'Upload failed' }));
       throw new Error(errorData.error || errorData.message || 'Upload failed');
     }
-
     return response.json();
   },
 };

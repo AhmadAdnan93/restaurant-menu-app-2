@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import { ensureAbsoluteImageUrl } from "@/lib/image-utils";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Store } from "lucide-react";
@@ -51,7 +52,7 @@ export default async function RestaurantsPage() {
                     {restaurant.logo && (
                       <div className="relative w-12 h-12">
                         <Image
-                          src={restaurant.logo}
+                          src={ensureAbsoluteImageUrl(restaurant.logo)}
                           alt={restaurant.name}
                           fill
                           className="object-contain rounded-lg"

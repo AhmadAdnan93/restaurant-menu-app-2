@@ -11,6 +11,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { ImageUpload } from "@/components/ImageUpload";
+import { restaurantsApi } from "@/lib/api-client";
 
 export default function NewRestaurantPage() {
   const router = useRouter();
@@ -47,21 +48,8 @@ export default function NewRestaurantPage() {
         slug: cleanSlug(formData.slug),
       };
 
-      const response = await fetch("/api/restaurants", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
-        },
-        body: JSON.stringify(cleanedData),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || errorData.message || "Failed to create restaurant");
-      }
-
-      const restaurant = await response.json();
+      // Use api-client (goes through /api/backend proxy) so auth header is forwarded correctly
+      const restaurant = await restaurantsApi.create(cleanedData, token);
 
       toast({
         title: "Success!",

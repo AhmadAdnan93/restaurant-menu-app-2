@@ -110,8 +110,11 @@ public class FileUploadService : IFileUploadService
         var fileInfo = new FileInfo(filePath);
         Console.WriteLine($"File saved successfully. Size: {fileInfo.Length} bytes, Exists: {fileInfo.Exists}");
 
-        // Get base URL (should be configured in appsettings)
-        var baseUrl = _configuration["BaseUrl"] ?? "http://localhost:5000";
+        // Get base URL - must include protocol so img src works (without it, browser treats as relative)
+        var baseUrl = (_configuration["BaseUrl"] ?? "http://localhost:5000").Trim();
+        if (!baseUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase) && !baseUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            baseUrl = "https://" + baseUrl.TrimStart('/');
+        baseUrl = baseUrl.TrimEnd('/');
         var fileUrl = $"{baseUrl}/uploads/{fileName}";
         Console.WriteLine($"File URL: {fileUrl}");
 
