@@ -36,6 +36,7 @@ export default function AdminPage() {
   const { toast } = useToast();
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showRetry, setShowRetry] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [restaurantToDelete, setRestaurantToDelete] = useState<Restaurant | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -51,6 +52,8 @@ export default function AdminPage() {
 
   const fetchRestaurants = async (retry = false) => {
     setLoading(true);
+    setShowRetry(false);
+    const retryTimer = setTimeout(() => setShowRetry(true), 15000);
     try {
       const token = auth.getToken();
       if (!token) {
@@ -67,7 +70,7 @@ export default function AdminPage() {
     } catch (error) {
       console.log("API error:", error);
       if (!retry) {
-        await new Promise(r => setTimeout(r, 2000));
+        await new Promise(r => setTimeout(r, 3000));
         return fetchRestaurants(true);
       }
       setRestaurants(getMockRestaurants().map((r: any) => ({
@@ -75,6 +78,7 @@ export default function AdminPage() {
         _count: { categories: r.categoryCount ?? r._count?.categories ?? 0 }
       })));
     } finally {
+      clearTimeout(retryTimer);
       setLoading(false);
     }
   };
@@ -145,8 +149,17 @@ export default function AdminPage() {
         {loading ? (
           <div className="text-center py-16">
             <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mb-4" />
-            <p className="text-gray-600">Loading restaurants...</p>
+            <p className="text-gray-600 dark:text-gray-400">Loading restaurants...</p>
             <p className="text-sm text-gray-500 mt-1">Backend may be warming up</p>
+            {showRetry && (
+              <Button
+                variant="outline"
+                className="mt-6"
+                onClick={() => fetchRestaurants(false)}
+              >
+                Retry
+              </Button>
+            )}
           </div>
         ) : restaurants.length === 0 ? (
           <div className="text-center py-12">

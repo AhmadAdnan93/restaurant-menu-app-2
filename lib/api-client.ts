@@ -225,20 +225,13 @@ export const paymentsApi = {
 
 // Upload API
 export const uploadApi = {
-  uploadImage: async (file: File, token: string): Promise<{ url: string }> => {
+  uploadImage: async (file: File, token: string, retry = false): Promise<{ url: string }> => {
     const formData = new FormData();
-    // Explicitly append file with filename to ensure it's preserved
     formData.append('file', file, file.name);
-
-    console.log('Uploading file:', {
-      name: file.name,
-      type: file.type,
-      size: file.size
-    });
 
     const baseUrl = getApiBaseUrl();
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 90000); // 90s for uploads (cold start + processing)
+    const timeout = setTimeout(() => controller.abort(), 90000);
     let response: Response;
     try {
       response = await fetch(`${baseUrl}/upload/image`, {
@@ -252,19 +245,25 @@ export const uploadApi = {
       });
     } catch (err: any) {
       clearTimeout(timeout);
+      if (err?.name === 'AbortError' && !retry) {
+        await new Promise(r => setTimeout(r, 5000));
+        return uploadApi.uploadImage(file, token, true);
+      }
       if (err?.name === 'AbortError') {
-        throw new Error('Upload timed out. Please try again with a smaller image.');
+        throw new Error('Upload timed out. Try again.');
       }
       throw err;
     }
     clearTimeout(timeout);
 
     if (!response.ok) {
+      if (response.status === 504 && !retry) {
+        await new Promise(r => setTimeout(r, 5000));
+        return uploadApi.uploadImage(file, token, true);
+      }
       const errorData = await response.json().catch(() => ({ error: 'Upload failed' }));
-      console.error('Upload failed:', errorData);
       throw new Error(errorData.error || errorData.message || 'Upload failed');
     }
-
     return response.json();
   },
 };

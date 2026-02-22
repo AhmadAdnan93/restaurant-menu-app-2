@@ -114,41 +114,41 @@ export default function RestaurantManagePage() {
     }
   }, [fetchRestaurant]);
 
+  const doCreateCategory = async (retry = false): Promise<boolean> => {
+    const token = localStorage.getItem('auth_token');
+    if (!token) return false;
+    const res = await fetch("/api/categories", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
+      },
+      body: JSON.stringify({ ...categoryForm, restaurantId: params.id }),
+    });
+    if (res.ok) return true;
+    const err = await res.json().catch(() => ({}));
+    if (res.status === 504 && !retry) return false;
+    throw new Error(err.error || "Failed to create category");
+  };
+
   const handleCreateCategory = async (e: React.FormEvent) => {
     e.preventDefault();
     setCreatingCategory(true);
     try {
-      const token = localStorage.getItem('auth_token');
-      if (!token) {
-        toast({
-          title: "Error",
-          description: "Please log in again.",
-          variant: "destructive",
-        });
-        return;
+      let ok = await doCreateCategory(false);
+      if (!ok) {
+        toast({ title: "Retrying...", description: "Backend warming up" });
+        await new Promise(r => setTimeout(r, 5000));
+        ok = await doCreateCategory(true);
       }
-
-      const response = await fetch("/api/categories", {
-        method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          ...categoryForm,
-          restaurantId: params.id,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to create category");
+      if (ok) {
+        toast({ title: "Success!", description: "Category created." });
+        setCategoryDialogOpen(false);
+        setCategoryForm({ name: "", description: "", order: 0 });
+        fetchRestaurant();
+      } else {
+        throw new Error("Backend took too long. Try again in a moment.");
       }
-
-      toast({ title: "Success!", description: "Category created." });
-      setCategoryDialogOpen(false);
-      setCategoryForm({ name: "", description: "", order: 0 });
-      fetchRestaurant();
     } catch (error: any) {
       toast({
         title: "Error",
@@ -160,48 +160,45 @@ export default function RestaurantManagePage() {
     }
   };
 
+  const doCreateMenuItem = async (retry = false): Promise<boolean> => {
+    const token = localStorage.getItem('auth_token');
+    if (!token) return false;
+    const res = await fetch("/api/menu-items", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        ...menuItemForm,
+        categoryId: menuItemDialogOpen,
+      }),
+    });
+    if (res.ok) return true;
+    const err = await res.json().catch(() => ({}));
+    if (res.status === 504 && !retry) return false;
+    throw new Error(err.error || "Failed to create menu item");
+  };
+
   const handleCreateMenuItem = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!menuItemDialogOpen) return;
     setCreatingMenuItem(true);
     try {
-      const token = localStorage.getItem('auth_token');
-      if (!token) {
-        toast({
-          title: "Error",
-          description: "Please log in again.",
-          variant: "destructive",
-        });
-        return;
+      let ok = await doCreateMenuItem(false);
+      if (!ok) {
+        toast({ title: "Retrying...", description: "Backend warming up, please wait" });
+        await new Promise(r => setTimeout(r, 6000));
+        ok = await doCreateMenuItem(true);
       }
-
-      const response = await fetch("/api/menu-items", {
-        method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          ...menuItemForm,
-          categoryId: menuItemDialogOpen,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to create menu item");
+      if (ok) {
+        toast({ title: "Success!", description: "Menu item created." });
+        setMenuItemDialogOpen(null);
+        setMenuItemForm({ name: "", description: "", price: "", image: "", order: 0 });
+        fetchRestaurant();
+      } else {
+        throw new Error("Backend took too long. Try again in a moment.");
       }
-
-      toast({ title: "Success!", description: "Menu item created." });
-      setMenuItemDialogOpen(null);
-      setMenuItemForm({
-        name: "",
-        description: "",
-        price: "",
-        image: "",
-        order: 0,
-      });
-      fetchRestaurant();
     } catch (error: any) {
       toast({
         title: "Error",
