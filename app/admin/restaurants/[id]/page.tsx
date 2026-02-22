@@ -80,9 +80,10 @@ export default function RestaurantManagePage() {
         return;
       }
 
-      // Fetch restaurant by ID from backend
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
-      const response = await fetch(`${API_BASE_URL}/restaurants/${params.id}`, {
+      // Fetch via proxy (same-origin, works in production)
+      const base = typeof window !== 'undefined' && !window.location.hostname.includes('localhost')
+        ? '/api/backend' : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api');
+      const response = await fetch(`${base}/restaurants/${params.id}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
