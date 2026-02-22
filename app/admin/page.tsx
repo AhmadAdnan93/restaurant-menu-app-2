@@ -14,7 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
-import { Plus, Store, Trash2, RefreshCw } from "lucide-react";
+import { Plus, Store, Trash2, RefreshCw, Pencil } from "lucide-react";
 import { restaurantsApi } from "@/lib/api-client";
 import { auth } from "@/lib/auth";
 import { getMockRestaurants } from "@/lib/mock-data";
@@ -206,8 +206,12 @@ export default function AdminPage() {
               <CardContent>
                 <div className="space-y-2">
                   <Button asChild className="w-full" variant="outline">
-                    <Link href={`/admin/restaurants/${restaurant.id}`}>
-                      Manage
+                    <Link href={`/admin/restaurants/${restaurant.id}`}>Manage</Link>
+                  </Button>
+                  <Button asChild className="w-full" variant="outline">
+                    <Link href={`/admin/restaurants/${restaurant.id}/edit`}>
+                      <Pencil className="h-4 w-4 mr-2" />
+                      Edit
                     </Link>
                   </Button>
                   <Button asChild className="w-full" variant="outline">
@@ -215,8 +219,8 @@ export default function AdminPage() {
                       View Menu
                     </Link>
                   </Button>
-                  <Button 
-                    className="w-full" 
+                  <Button
+                    className="w-full"
                     variant="destructive"
                     onClick={() => handleDeleteClick(restaurant)}
                   >

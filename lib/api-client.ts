@@ -259,7 +259,7 @@ export const uploadApi = {
 
     const baseUrl = getApiBaseUrl();
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 90000);
+    const timeout = setTimeout(() => controller.abort(), 30000);
     let response: Response;
     try {
       response = await fetch(`${baseUrl}/upload/image`, {
@@ -270,7 +270,7 @@ export const uploadApi = {
       });
     } catch (err: any) {
       clearTimeout(timeout);
-      if (err?.name === 'AbortError' && !retry) {
+      if ((err?.name === 'AbortError' || err?.message?.includes?.('504')) && !retry) {
         await new Promise(r => setTimeout(r, 5000));
         return uploadApi.uploadImage(file, token, true);
       }
@@ -280,7 +280,7 @@ export const uploadApi = {
     clearTimeout(timeout);
 
     if (!response.ok) {
-      if (response.status === 504 && !retry) {
+      if ((response.status === 504 || response.status === 502) && !retry) {
         await new Promise(r => setTimeout(r, 5000));
         return uploadApi.uploadImage(file, token, true);
       }

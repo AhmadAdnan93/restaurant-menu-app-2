@@ -20,6 +20,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { getMockRestaurantById } from "@/lib/mock-data";
 import { ImageUpload } from "@/components/ImageUpload";
+import { categoriesApi, menuItemsApi } from "@/lib/api-client";
 
 interface Category {
   id: string;
@@ -92,6 +93,8 @@ export default function RestaurantManagePage() {
   });
   const [creatingCategory, setCreatingCategory] = useState(false);
   const [creatingMenuItem, setCreatingMenuItem] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [editingMenuItem, setEditingMenuItem] = useState<MenuItem | null>(null);
 
   const fetchRestaurant = useCallback(async () => {
     setLoading(true);
@@ -149,6 +152,75 @@ export default function RestaurantManagePage() {
     const err = await res.json().catch(() => ({}));
     if (res.status === 504 && !retry) return false;
     throw new Error(err.error || "Failed to create category");
+  };
+
+  const handleEditCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingCategory) return;
+    const token = localStorage.getItem("auth_token");
+    if (!token) return;
+    setCreatingCategory(true);
+    try {
+      await categoriesApi.update(editingCategory.id, categoryForm, token);
+      toast({ title: "Success!", description: "Category updated." });
+      setEditingCategory(null);
+      setCategoryForm({ name: "", description: "", order: 0 });
+      fetchRestaurant();
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message || "Failed to update.", variant: "destructive" });
+    } finally {
+      setCreatingCategory(false);
+    }
+  };
+
+  const handleDeleteCategory = async (cat: Category) => {
+    const token = localStorage.getItem("auth_token");
+    if (!token) return;
+    try {
+      await categoriesApi.delete(cat.id, token);
+      toast({ title: "Success!", description: "Category deleted." });
+      fetchRestaurant();
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message || "Failed to delete.", variant: "destructive" });
+    }
+  };
+
+  const handleEditMenuItem = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingMenuItem) return;
+    const token = localStorage.getItem("auth_token");
+    if (!token) return;
+    setCreatingMenuItem(true);
+    try {
+      await menuItemsApi.update(editingMenuItem.id, {
+        name: menuItemForm.name,
+        description: menuItemForm.description,
+        price: parseFloat(menuItemForm.price) || 0,
+        image: menuItemForm.image || null,
+        order: menuItemForm.order,
+      }, token);
+      toast({ title: "Success!", description: "Menu item updated." });
+      setEditingMenuItem(null);
+      setMenuItemForm({ name: "", description: "", price: "", image: "", order: 0 });
+      setMenuItemDialogOpen(null);
+      fetchRestaurant();
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message || "Failed to update.", variant: "destructive" });
+    } finally {
+      setCreatingMenuItem(false);
+    }
+  };
+
+  const handleDeleteMenuItem = async (item: MenuItem) => {
+    const token = localStorage.getItem("auth_token");
+    if (!token) return;
+    try {
+      await menuItemsApi.delete(item.id, token);
+      toast({ title: "Success!", description: "Menu item deleted." });
+      fetchRestaurant();
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message || "Failed to delete.", variant: "destructive" });
+    }
   };
 
   const handleCreateCategory = async (e: React.FormEvent) => {
@@ -307,6 +379,147 @@ export default function RestaurantManagePage() {
           </div>
         )}
         <div className="mb-6">
+          <Dialog
+            open={!!editingCategory}
+            onOpenChange={(open) => {
+              if (!open) setEditingCategory(null);
+            }}
+          >
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Edit Category</DialogTitle>
+                <DialogDescription>
+                  Update the category details.
+                </DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleEditCategory} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-cat-name">Name *</Label>
+                  <Input
+                    id="edit-cat-name"
+                    value={categoryForm.name}
+                    onChange={(e) =>
+                      setCategoryForm({ ...categoryForm, name: e.target.value })
+                    }
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-cat-desc">Description</Label>
+                  <Textarea
+                    id="edit-cat-desc"
+                    value={categoryForm.description}
+                    onChange={(e) =>
+                      setCategoryForm({
+                        ...categoryForm,
+                        description: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-cat-order">Order</Label>
+                  <Input
+                    id="edit-cat-order"
+                    type="number"
+                    value={categoryForm.order}
+                    onChange={(e) =>
+                      setCategoryForm({
+                        ...categoryForm,
+                        order: parseInt(e.target.value) || 0,
+                      })
+                    }
+                  />
+                </div>
+                <Button type="submit" className="w-full" disabled={creatingCategory}>
+                  {creatingCategory ? "Saving..." : "Save Changes"}
+                </Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+          <Dialog
+            open={!!editingMenuItem}
+            onOpenChange={(open) => {
+              if (!open) setEditingMenuItem(null);
+            }}
+          >
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Edit Menu Item</DialogTitle>
+                <DialogDescription>
+                  Update the menu item details.
+                </DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleEditMenuItem} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-item-name">Name *</Label>
+                  <Input
+                    id="edit-item-name"
+                    value={menuItemForm.name}
+                    onChange={(e) =>
+                      setMenuItemForm({ ...menuItemForm, name: e.target.value })
+                    }
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-item-desc">Description *</Label>
+                  <Textarea
+                    id="edit-item-desc"
+                    value={menuItemForm.description}
+                    onChange={(e) =>
+                      setMenuItemForm({
+                        ...menuItemForm,
+                        description: e.target.value,
+                      })
+                    }
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-item-price">Price *</Label>
+                  <Input
+                    id="edit-item-price"
+                    type="number"
+                    step="0.01"
+                    value={menuItemForm.price}
+                    onChange={(e) =>
+                      setMenuItemForm({
+                        ...menuItemForm,
+                        price: e.target.value,
+                      })
+                    }
+                    required
+                  />
+                </div>
+                <ImageUpload
+                  label="Menu Item Image"
+                  value={menuItemForm.image}
+                  onChange={(url) =>
+                    setMenuItemForm({ ...menuItemForm, image: url })
+                  }
+                  maxSizeMB={5}
+                />
+                <div className="space-y-2">
+                  <Label htmlFor="edit-item-order">Order</Label>
+                  <Input
+                    id="edit-item-order"
+                    type="number"
+                    value={menuItemForm.order}
+                    onChange={(e) =>
+                      setMenuItemForm({
+                        ...menuItemForm,
+                        order: parseInt(e.target.value) || 0,
+                      })
+                    }
+                  />
+                </div>
+                <Button type="submit" className="w-full" disabled={creatingMenuItem}>
+                  {creatingMenuItem ? "Saving..." : "Save Changes"}
+                </Button>
+              </form>
+            </DialogContent>
+          </Dialog>
           <Dialog open={categoryDialogOpen} onOpenChange={setCategoryDialogOpen}>
             <DialogTrigger asChild>
               <Button>
@@ -379,7 +592,32 @@ export default function RestaurantManagePage() {
                       <CardDescription>{category.description}</CardDescription>
                     )}
                   </div>
-                  <Dialog
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setEditingCategory(category);
+                        setCategoryForm({
+                          name: category.name,
+                          description: category.description || "",
+                          order: category.order,
+                        });
+                      }}
+                    >
+                      <Edit className="h-4 w-4 mr-1" />
+                      Edit
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      onClick={() => handleDeleteCategory(category)}
+                    >
+                      <Trash2 className="h-4 w-4 mr-1" />
+                      Delete
+                    </Button>
+                    <Dialog
                     open={menuItemDialogOpen === category.id}
                     onOpenChange={(open) => {
                       setMenuItemDialogOpen(open ? category.id : null);
@@ -489,13 +727,44 @@ export default function RestaurantManagePage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       {category.menuItems.map((item) => (
                         <Card key={item.id} className="p-4">
-                          <h4 className="font-semibold mb-2">{item.name}</h4>
-                          <p className="text-sm text-gray-600 mb-2">
-                            {item.description}
-                          </p>
-                          <p className="text-lg font-bold text-primary">
-                            ${item.price.toFixed(2)}
-                          </p>
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-semibold mb-2">{item.name}</h4>
+                              <p className="text-sm text-gray-600 mb-2">
+                                {item.description}
+                              </p>
+                              <p className="text-lg font-bold text-primary">
+                                ${item.price.toFixed(2)}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-8 w-8 p-0"
+                                onClick={() => {
+                                  setEditingMenuItem(item);
+                                  setMenuItemForm({
+                                    name: item.name,
+                                    description: item.description,
+                                    price: String(item.price),
+                                    image: item.image || "",
+                                    order: item.order,
+                                  });
+                                }}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                onClick={() => handleDeleteMenuItem(item)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
                         </Card>
                       ))}
                     </div>
