@@ -27,6 +27,7 @@ export default function EditRestaurantPage() {
     logo: "",
     coverImage: "",
     description: "",
+    isPublished: true,
   });
 
   useEffect(() => {
@@ -49,6 +50,7 @@ export default function EditRestaurantPage() {
             logo: data.logo || "",
             coverImage: data.coverImage || "",
             description: data.description || "",
+            isPublished: data.isPublished ?? true,
           });
         }
       })
@@ -67,8 +69,12 @@ export default function EditRestaurantPage() {
         return;
       }
       const cleanedData = {
-        ...formData,
+        name: formData.name,
         slug: formData.slug.trim().replace(/^\/menu\//, "").replace(/^\//, "").replace(/\/$/, ""),
+        logo: formData.logo || null,
+        coverImage: formData.coverImage || null,
+        description: formData.description || null,
+        isPublished: formData.isPublished,
       };
       await restaurantsApi.update(id, cleanedData, token);
       toast({ title: "Success!", description: "Restaurant updated." });
@@ -156,6 +162,20 @@ export default function EditRestaurantPage() {
                 onChange={(url) => setFormData({ ...formData, coverImage: url })}
                 maxSizeMB={5}
               />
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="isPublished"
+                  checked={formData.isPublished}
+                  onChange={(e) =>
+                    setFormData({ ...formData, isPublished: e.target.checked })
+                  }
+                  className="h-4 w-4 rounded border-gray-300"
+                />
+                <Label htmlFor="isPublished" className="text-sm font-medium cursor-pointer">
+                  Published (visible on public restaurant list)
+                </Label>
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="description">Description</Label>
                 <Textarea
