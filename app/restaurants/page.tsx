@@ -8,8 +8,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Store, RefreshCw } from "lucide-react";
 import { restaurantsApi } from "@/lib/api-client";
+import { useLocale } from "@/components/LocaleProvider";
 
 export default function RestaurantsPage() {
+  const { t } = useLocale();
   const [restaurants, setRestaurants] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -28,7 +30,7 @@ export default function RestaurantsPage() {
         }
       } catch (err) {
         if (attempt === 3) {
-          setError("Could not load restaurants. The backend may be slow.");
+          setError(t.loadError);
         } else {
           await new Promise((r) => setTimeout(r, 2000));
         }
@@ -46,9 +48,9 @@ export default function RestaurantsPage() {
       <header className="bg-white dark:bg-gray-800 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between">
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Our Restaurants</h1>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{t.ourRestaurants}</h1>
             <Button asChild variant="outline">
-              <Link href="/">Home</Link>
+              <Link href="/">{t.home}</Link>
             </Button>
           </div>
         </div>
@@ -58,7 +60,7 @@ export default function RestaurantsPage() {
         {loading && restaurants.length === 0 ? (
           <div className="text-center py-16">
             <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mb-4" />
-            <p className="text-gray-600 dark:text-gray-400">Loading restaurants...</p>
+            <p className="text-gray-600 dark:text-gray-400">{t.loadingRestaurants}</p>
           </div>
         ) : error && restaurants.length === 0 ? (
           <div className="text-center py-12">
@@ -66,17 +68,17 @@ export default function RestaurantsPage() {
             <p className="text-gray-600 dark:text-gray-400 mb-4">{error}</p>
             <Button onClick={fetchRestaurants} variant="outline">
               <RefreshCw className="h-4 w-4 mr-2" />
-              Retry
+              {t.retry}
             </Button>
           </div>
         ) : restaurants.length === 0 ? (
           <div className="text-center py-12">
             <Store className="h-16 w-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-              No restaurants available
+              {t.noRestaurantsAvailable}
             </h3>
             <p className="text-gray-500 dark:text-gray-400">
-              Check back later for available restaurants.
+              {t.checkBackLater}
             </p>
           </div>
         ) : (
@@ -84,7 +86,7 @@ export default function RestaurantsPage() {
             <div className="flex justify-end mb-4">
               <Button variant="outline" size="sm" onClick={fetchRestaurants} disabled={loading}>
                 <RefreshCw className="h-4 w-4 mr-2" />
-                Refresh
+                {t.refresh}
               </Button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -110,7 +112,7 @@ export default function RestaurantsPage() {
                 </CardHeader>
                 <CardContent>
                   <Button asChild className="w-full">
-                    <Link href={`/menu/${restaurant.slug}`}>View Menu</Link>
+                    <Link href={`/menu/${restaurant.slug}`}>{t.viewMenu}</Link>
                   </Button>
                 </CardContent>
               </Card>

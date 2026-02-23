@@ -15,10 +15,11 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
 import { Plus, Store, Trash2, RefreshCw, Pencil } from "lucide-react";
-import { restaurantsApi } from "@/lib/api-client";
+import { restaurantsApi, authApi } from "@/lib/api-client";
 import { auth } from "@/lib/auth";
 import { getMockRestaurants } from "@/lib/mock-data";
 import { getCachedRestaurants, setCachedRestaurants } from "@/lib/admin-cache";
+import { useLocale } from "@/components/LocaleProvider";
 
 interface Restaurant {
   id: string;
@@ -35,6 +36,7 @@ const SLOW_THRESHOLD_MS = 3000; // Show "Wake backend" after 3s
 export default function AdminPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const { t } = useLocale();
   // Instant load: cache first, then mock, then API (< 2 sec rule)
   const [restaurants, setRestaurants] = useState<Restaurant[]>(() => {
     const cached = getCachedRestaurants();
@@ -49,17 +51,38 @@ export default function AdminPage() {
   const [showWakeRetry, setShowWakeRetry] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [restaurantToDelete, setRestaurantToDelete] = useState<Restaurant | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
+  const [needsRoleFix, setNeedsRoleFix] = useState(false);
   const slowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (!auth.isAuthenticated() || (!auth.isSuperAdmin() && !auth.isRestaurantOwner())) {
+    if (typeof window === "undefined") return;
+    const token = auth.getToken();
+    if (!token) {
       router.push("/login");
       return;
     }
-    fetchRestaurants();
-    return () => {
-      if (slowTimerRef.current) clearTimeout(slowTimerRef.current);
-    };
+    const hasAdminRole = auth.isSuperAdmin() || auth.isRestaurantOwner();
+    if (hasAdminRole) {
+      setAuthChecked(true);
+      fetchRestaurants();
+      return () => { if (slowTimerRef.current) clearTimeout(slowTimerRef.current); };
+    }
+    authApi.getCurrentUser(token)
+      .then((user: { role?: string; email?: string }) => {
+        if (user?.role === "SUPER_ADMIN" || user?.role === "RESTAURANT_OWNER") {
+          auth.setAuth(token, { id: (user as any).userId, email: user.email || "", role: user.role, restaurantId: (user as any).restaurantId });
+          setAuthChecked(true);
+          fetchRestaurants();
+        } else {
+          setNeedsRoleFix(true);
+          setAuthChecked(true);
+        }
+      })
+      .catch(() => {
+        router.push("/login");
+      });
+    return () => { if (slowTimerRef.current) clearTimeout(slowTimerRef.current); };
   }, [router]);
 
   const fetchRestaurants = async () => {
@@ -105,22 +128,12 @@ export default function AdminPage() {
 
   const wakeAndRetry = () => {
     setShowWakeRetry(false);
-    const token = auth.getToken();
-    if (token && typeof window !== "undefined") {
-      fetch(`${window.location.origin}/api/backend/restaurants?publishedOnly=false`, {
-        headers: { Authorization: `Bearer ${token}` },
-      }).catch(() => {});
-    }
     setTimeout(fetchRestaurants, 1000);
   };
 
   const handleDeleteClick = (restaurant: Restaurant) => {
     setRestaurantToDelete(restaurant);
     setDeleteDialogOpen(true);
-    if (typeof window !== 'undefined') {
-      const token = auth.getToken();
-      if (token) fetch(`${window.location.origin}/api/backend/restaurants?publishedOnly=false`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
-    }
   };
 
   const handleDeleteConfirm = async () => {
@@ -128,7 +141,7 @@ export default function AdminPage() {
 
     const token = auth.getToken();
     if (!token) {
-      toast({ title: "Error", description: "Please log in again.", variant: "destructive" });
+      toast({ title: t.error, description: t.pleaseLoginAgain, variant: "destructive" });
       router.push('/login');
       return;
     }
@@ -138,7 +151,7 @@ export default function AdminPage() {
     setRestaurantToDelete(null);
     setRestaurants((prev) => prev.filter((r) => r.id !== toDelete.id));
     setCachedRestaurants(restaurants.filter((r) => r.id !== toDelete.id));
-    toast({ title: "Deleted", description: "Restaurant removed." });
+    toast({ title: t.deleted, description: t.restaurantRemoved });
 
     try {
       await restaurantsApi.delete(toDelete.id, token);
@@ -147,25 +160,84 @@ export default function AdminPage() {
       setRestaurants((prev) => [...prev, toDelete]);
       setCachedRestaurants(restaurants);
       toast({
-        title: "Delete failed",
-        description: error.message || "Please try again.",
+        title: t.deleteFailed,
+        description: error.message || t.pleaseLoginAgain,
         variant: "destructive",
       });
     }
   };
+
+  if (!authChecked) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (needsRoleFix) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 p-4">
+        <Card className="max-w-lg w-full">
+          <CardHeader>
+            <CardTitle className="text-xl">{t.adminAccessRequired}</CardTitle>
+            <CardDescription>
+              {t.adminRoleFixDescription}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <pre className="p-4 bg-gray-100 dark:bg-gray-800 rounded text-sm overflow-x-auto">
+{`INSERT INTO public.user_roles (user_id, role)
+SELECT id, 'SUPER_ADMIN' FROM auth.users WHERE email = 'admin@restaurantmenu.com'
+ON CONFLICT (user_id) DO UPDATE SET role = 'SUPER_ADMIN';`}
+            </pre>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              1. Open Supabase Dashboard → SQL Editor → New query<br />
+              2. Paste the SQL above → Run<br />
+              3. Click Log out below, then log in again
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                onClick={async () => {
+                  const token = auth.getToken();
+                  if (!token) return;
+                  try {
+                    const user: any = await authApi.getCurrentUser(token);
+                    if (user?.role === "SUPER_ADMIN" || user?.role === "RESTAURANT_OWNER") {
+                      auth.setAuth(token, { id: user.userId, email: user.email || "", role: user.role, restaurantId: user.restaurantId });
+                      setNeedsRoleFix(false);
+                      fetchRestaurants();
+                    }
+                  } catch {}
+                }}
+              >
+                {t.ranSqlCheckAgain}
+              </Button>
+              <Button variant="outline" onClick={() => { auth.logout(); router.push("/login"); }}>
+                {t.logout}
+              </Button>
+              <Button variant="outline" asChild>
+                <Link href="/">{t.home}</Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <header className="bg-white dark:bg-gray-800 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between">
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Admin Panel</h1>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{t.adminPanel}</h1>
             <div className="flex gap-4">
               <Button asChild>
-                <Link href="/admin/restaurants/new">Add Restaurant</Link>
+                <Link href="/admin/restaurants/new">{t.addRestaurant}</Link>
               </Button>
               <Button asChild variant="outline">
-                <Link href="/">Home</Link>
+                <Link href="/">{t.home}</Link>
               </Button>
             </div>
           </div>
@@ -175,15 +247,15 @@ export default function AdminPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {showWakeRetry && (
           <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg flex items-center justify-between gap-4">
-            <p className="text-amber-800 text-sm">Backend may be cold. Wake it and retry?</p>
+            <p className="text-amber-800 text-sm">{t.backendWarming}</p>
             <Button onClick={wakeAndRetry} variant="outline" size="sm">
               <RefreshCw className="h-4 w-4 mr-2" />
-              Wake backend & Retry
+              {t.wakeBackendRetry}
             </Button>
           </div>
         )}
         {refreshing && restaurants.length > 0 && (
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Refreshing...</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{t.refreshing}</p>
         )}
         {restaurants.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -193,7 +265,7 @@ export default function AdminPage() {
                 <div className="flex items-center justify-between">
                   <Store className="h-8 w-8 text-primary" />
                   <div className="text-sm text-gray-500">
-                    {restaurant._count?.categories || restaurant.categoryCount || 0} categories
+                    {restaurant._count?.categories || restaurant.categoryCount || 0} {t.categories}
                   </div>
                 </div>
                 <CardTitle>{restaurant.name}</CardTitle>
@@ -202,17 +274,17 @@ export default function AdminPage() {
               <CardContent>
                 <div className="space-y-2">
                   <Button asChild className="w-full" variant="outline">
-                    <Link href={`/admin/restaurants/${restaurant.id}`}>Manage</Link>
+                    <Link href={`/admin/restaurants/${restaurant.id}`}>{t.manage}</Link>
                   </Button>
                   <Button asChild className="w-full" variant="outline">
                     <Link href={`/admin/restaurants/${restaurant.id}/edit`}>
                       <Pencil className="h-4 w-4 mr-2" />
-                      Edit
+                      {t.edit}
                     </Link>
                   </Button>
                   <Button asChild className="w-full" variant="outline">
                     <Link href={`/menu/${restaurant.slug.replace(/^\/menu\//, '').replace(/^\//, '')}`} target="_blank">
-                      View Menu
+                      {t.viewMenu}
                     </Link>
                   </Button>
                   <Button
@@ -221,7 +293,7 @@ export default function AdminPage() {
                     onClick={() => handleDeleteClick(restaurant)}
                   >
                     <Trash2 className="h-4 w-4 mr-2" />
-                    Delete
+                    {t.delete}
                   </Button>
                 </div>
               </CardContent>
@@ -231,10 +303,10 @@ export default function AdminPage() {
         ) : !refreshing ? (
           <div className="text-center py-12">
             <Store className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">No restaurants yet</h3>
-            <p className="text-gray-500 dark:text-gray-400 mb-6">Get started by creating your first restaurant.</p>
+            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">{t.noRestaurants}</h3>
+            <p className="text-gray-500 dark:text-gray-400 mb-6">{t.getStarted}</p>
             <Button asChild>
-              <Link href="/admin/restaurants/new">Add Restaurant</Link>
+              <Link href="/admin/restaurants/new">{t.addRestaurant}</Link>
             </Button>
           </div>
         ) : null}
@@ -243,9 +315,9 @@ export default function AdminPage() {
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete Restaurant</DialogTitle>
+            <DialogTitle>{t.deletingRestaurant}</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete &quot;{restaurantToDelete?.name}&quot;? This action cannot be undone and will permanently delete the restaurant and all its data.
+              {t.deleteConfirm}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -256,13 +328,13 @@ export default function AdminPage() {
                 setRestaurantToDelete(null);
               }}
             >
-              Cancel
+              {t.cancel}
             </Button>
             <Button
               variant="destructive"
               onClick={handleDeleteConfirm}
             >
-              Delete
+              {t.delete}
             </Button>
           </DialogFooter>
         </DialogContent>

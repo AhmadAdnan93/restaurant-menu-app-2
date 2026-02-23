@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
+import { useLocale } from "@/components/LocaleProvider";
 
 interface RatingProps {
   menuItemId: string;
@@ -14,6 +15,7 @@ interface RatingProps {
 }
 
 export function Rating({ menuItemId, currentRating = 0, ratingCount = 0 }: RatingProps) {
+  const { t } = useLocale();
   const [rating, setRating] = useState(0);
   const [hover, setHover] = useState(0);
   const [comment, setComment] = useState("");
@@ -22,7 +24,7 @@ export function Rating({ menuItemId, currentRating = 0, ratingCount = 0 }: Ratin
 
   const handleSubmit = async () => {
     try {
-      const response = await fetch("/api/ratings", {
+      const response = await fetch("/api/supabase/ratings", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -39,8 +41,8 @@ export function Rating({ menuItemId, currentRating = 0, ratingCount = 0 }: Ratin
       }
 
       toast({
-        title: "Thank you!",
-        description: "Your rating has been submitted.",
+        title: t.thankYou,
+        description: t.ratingSubmitted,
       });
 
       setOpen(false);
@@ -49,8 +51,8 @@ export function Rating({ menuItemId, currentRating = 0, ratingCount = 0 }: Ratin
       window.location.reload();
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to submit rating. Please try again.",
+        title: t.error,
+        description: t.ratingFailed,
         variant: "destructive",
       });
     }
@@ -75,18 +77,18 @@ export function Rating({ menuItemId, currentRating = 0, ratingCount = 0 }: Ratin
           </span>
         )}
         {ratingCount > 0 && (
-          <span className="text-sm text-gray-500">({ratingCount} reviews)</span>
+          <span className="text-sm text-gray-500">({ratingCount} {t.reviews})</span>
         )}
       </div>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
           <Button variant="outline" size="sm" className="text-xs">
-            Rate
+            {t.rate}
           </Button>
         </DialogTrigger>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Rate this dish</DialogTitle>
+            <DialogTitle>{t.rateThisDish}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="flex gap-2 justify-center">
@@ -110,12 +112,12 @@ export function Rating({ menuItemId, currentRating = 0, ratingCount = 0 }: Ratin
               ))}
             </div>
             <Textarea
-              placeholder="Add a comment (optional)"
+              placeholder={t.addCommentOptional}
               value={comment}
               onChange={(e) => setComment(e.target.value)}
             />
             <Button onClick={handleSubmit} disabled={rating === 0} className="w-full">
-              Submit Rating
+              {t.submitRating}
             </Button>
           </div>
         </DialogContent>

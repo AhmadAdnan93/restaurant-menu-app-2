@@ -10,8 +10,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { authApi } from "@/lib/api-client";
 import { auth } from "@/lib/auth";
 import { useToast } from "@/components/ui/use-toast";
+import { useLocale } from "@/components/LocaleProvider";
 
 export default function LoginPage() {
+  const { t } = useLocale();
   const router = useRouter();
   const { toast } = useToast();
   const [email, setEmail] = useState("");
@@ -31,22 +33,15 @@ export default function LoginPage() {
         restaurantId: response.restaurantId,
       });
       toast({
-        title: "Success!",
-        description: "Logged in successfully",
+        title: t.success,
+        description: t.loggedInSuccess,
       });
-      // Warm backend so admin loads fast (skip when using Supabase)
-      if (typeof window !== "undefined" && process.env.NEXT_PUBLIC_USE_SUPABASE !== "true") {
-        fetch(`${window.location.origin}/api/backend/restaurants?publishedOnly=false`, {
-          headers: { Authorization: `Bearer ${response.token}` },
-        }).catch(() => {});
-      }
-
       router.push(response.role === "SUPER_ADMIN" || response.role === "RESTAURANT_OWNER" ? "/admin" : "/");
       router.refresh();
     } catch (error: any) {
       toast({
-        title: "Error",
-        description: error.message || "Login failed",
+        title: t.error,
+        description: error.message || t.loginFailed,
         variant: "destructive",
       });
     } finally {
@@ -58,13 +53,13 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle className="text-2xl">Login</CardTitle>
-          <CardDescription>Enter your credentials to access the admin panel</CardDescription>
+          <CardTitle className="text-2xl">{t.loginTitle}</CardTitle>
+          <CardDescription>{t.loginDescription}</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">{t.email}</Label>
               <Input
                 id="email"
                 type="email"
@@ -75,7 +70,7 @@ export default function LoginPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">{t.password}</Label>
               <Input
                 id="password"
                 type="password"
@@ -86,17 +81,17 @@ export default function LoginPage() {
               />
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Logging in..." : "Login"}
+              {loading ? t.loggingIn : t.login}
             </Button>
           </form>
           <div className="mt-4 text-sm text-center text-gray-600">
-            <p>Demo Accounts:</p>
+            <p>{t.demoAccounts}</p>
             <p className="mt-2">Super Admin: admin@restaurantmenu.com / Admin@123</p>
             <p>Owner: mario@marioskitchen.com / Mario@123</p>
           </div>
           <div className="mt-4 text-center">
             <Button asChild variant="link">
-              <Link href="/">Back to Home</Link>
+              <Link href="/">{t.backToHome}</Link>
             </Button>
           </div>
         </CardContent>
