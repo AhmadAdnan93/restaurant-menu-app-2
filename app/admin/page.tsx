@@ -177,7 +177,7 @@ export default function AdminPage() {
 
   if (needsRoleFix) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 p-4">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 p-4 relative z-[100]">
         <Card className="max-w-lg w-full">
           <CardHeader>
             <CardTitle className="text-xl">{t.adminAccessRequired}</CardTitle>
