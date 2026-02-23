@@ -68,7 +68,7 @@ export default function LoginPage() {
               <Input
                 id="email"
                 type="email"
-                placeholder="ahmad_selwawe93@yahoo.com"
+                placeholder="admin@restaurantmenu.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -91,7 +91,7 @@ export default function LoginPage() {
           </form>
           <div className="mt-4 text-sm text-center text-gray-600">
             <p>Demo Accounts:</p>
-            <p className="mt-2">Admin: ahmad_selwawe93@yahoo.com / Ahmad@123</p>
+            <p className="mt-2">Super Admin: admin@restaurantmenu.com / Admin@123</p>
             <p>Owner: mario@marioskitchen.com / Mario@123</p>
           </div>
           <div className="mt-4 text-center">

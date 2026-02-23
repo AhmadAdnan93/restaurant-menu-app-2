@@ -6,8 +6,8 @@
  * Usage:
  *   set NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
  *   set SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
- *   set ADMIN_EMAIL=ahmad_selwawe93@yahoo.com
- *   set ADMIN_PASSWORD=Ahmad@123
+ *   set ADMIN_EMAIL=admin@restaurantmenu.com
+ *   set ADMIN_PASSWORD=Admin@123
  *   node scripts/setup-supabase.mjs
  *
  * Or on Linux/Mac:
@@ -18,16 +18,16 @@ import { createClient } from "@supabase/supabase-js";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const email = process.env.ADMIN_EMAIL || "ahmad_selwawe93@yahoo.com";
-const password = process.env.ADMIN_PASSWORD || "Ahmad@123";
+const email = process.env.ADMIN_EMAIL || "admin@restaurantmenu.com";
+const password = process.env.ADMIN_PASSWORD || "Admin@123";
 
 if (!url || !key) {
   console.error("\n❌ Missing env vars. Set these first:");
   console.error("   NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co");
   console.error("   SUPABASE_SERVICE_ROLE_KEY=your-service-role-key");
   console.error("\nOptional:");
-  console.error("   ADMIN_EMAIL=ahmad_selwawe93@yahoo.com");
-  console.error("   ADMIN_PASSWORD=Ahmad@123");
+  console.error("   ADMIN_EMAIL=admin@restaurantmenu.com");
+  console.error("   ADMIN_PASSWORD=Admin@123");
   process.exit(1);
 }
 
@@ -65,7 +65,6 @@ async function main() {
     email,
     password,
     email_confirm: true,
-    user_metadata: { display_name: "ahmadadnan93" },
   });
   if (userErr) {
     if (userErr.message?.includes("already been registered")) {

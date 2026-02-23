@@ -27,7 +27,7 @@ Use this when you want to switch from Railway to Supabase (fast, no cold starts)
 
 1. Go to **Authentication → Users**
 2. Click **Add user** → **Create new user**
-3. Enter email and password (e.g. `ahmad_selwawe93@yahoo.com` / `Ahmad@123`)
+3. Enter email and password (e.g. `admin@restaurantmenu.com` / `Admin@123`)
 
 4. Copy the new user's **UID** (UUID)
 5. Go to **SQL Editor** and run:
