@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "smoke-test": "node scripts/smoke-test.mjs",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",

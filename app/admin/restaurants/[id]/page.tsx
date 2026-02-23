@@ -155,21 +155,18 @@ export default function RestaurantManagePage() {
     return () => clearTimeout(t);
   }, [fetchFailed, loading, fetchRestaurant]);
 
-  const doCreateCategory = async (retry = false): Promise<boolean> => {
+  const doCreateCategory = async (attempt: number): Promise<boolean> => {
     const token = localStorage.getItem('auth_token');
     if (!token) return false;
-    const res = await fetch("/api/categories", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`,
-      },
-      body: JSON.stringify({ ...categoryForm, restaurantId: params.id }),
-    });
-    if (res.ok) return true;
-    const err = await res.json().catch(() => ({}));
-    if (res.status === 504 && !retry) return false;
-    throw new Error(err.error || "Failed to create category");
+    try {
+      await categoriesApi.create(id, categoryForm, token);
+      return true;
+    } catch (e: any) {
+      const msg = e?.message?.toLowerCase() || '';
+      const isRetriable = msg.includes('timeout') || msg.includes('504') || msg.includes('502') || e?.name === 'AbortError';
+      if (isRetriable && attempt < 3) return false;
+      throw e;
+    }
   };
 
   const handleEditCategory = async (e: React.FormEvent) => {
@@ -245,20 +242,21 @@ export default function RestaurantManagePage() {
     e.preventDefault();
     setCreatingCategory(true);
     try {
-      let ok = await doCreateCategory(false);
-      if (!ok) {
-        toast({ title: "Retrying...", description: "Backend warming up" });
-        await new Promise(r => setTimeout(r, 2000));
-        ok = await doCreateCategory(true);
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        const ok = await doCreateCategory(attempt);
+        if (ok) {
+          toast({ title: "Success!", description: "Category created." });
+          setCategoryDialogOpen(false);
+          setCategoryForm({ name: "", description: "", order: 0 });
+          fetchRestaurant();
+          return;
+        }
+        if (attempt < 3) {
+          toast({ title: "Retrying...", description: "Backend warming up" });
+          await new Promise(r => setTimeout(r, 2000));
+        }
       }
-      if (ok) {
-        toast({ title: "Success!", description: "Category created." });
-        setCategoryDialogOpen(false);
-        setCategoryForm({ name: "", description: "", order: 0 });
-        fetchRestaurant();
-      } else {
-        throw new Error("Backend took too long. Try again in a moment.");
-      }
+      throw new Error("Backend took too long. Try again in a moment.");
     } catch (error: any) {
       toast({
         title: "Error",

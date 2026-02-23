@@ -191,6 +191,7 @@ export const categoriesApi = {
       method: 'POST',
       body: data,
       token,
+      timeoutMs: 25000,
     }),
 
   update: (id: string, data: any, token: string) =>
@@ -292,8 +293,9 @@ export const uploadApi = {
       });
     } catch (err: any) {
       clearTimeout(timeout);
-      if ((err?.name === 'AbortError' || err?.message?.includes?.('504')) && !retry) {
-        await new Promise(r => setTimeout(r, 5000));
+      const isRetryable = (err?.name === 'AbortError' || /504|502|timeout/i.test(err?.message || ''));
+      if (isRetryable && !retry) {
+        await new Promise(r => setTimeout(r, 3000));
         return uploadApi.uploadImage(file, token, true);
       }
       if (err?.name === 'AbortError') throw new Error('Upload timed out. Try again.');
@@ -303,7 +305,7 @@ export const uploadApi = {
 
     if (!response.ok) {
       if ((response.status === 504 || response.status === 502) && !retry) {
-        await new Promise(r => setTimeout(r, 5000));
+        await new Promise(r => setTimeout(r, 3000));
         return uploadApi.uploadImage(file, token, true);
       }
       const errorData = await response.json().catch(() => ({ error: 'Upload failed' }));
