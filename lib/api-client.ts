@@ -1,15 +1,14 @@
 // API Client for .NET Backend
 
 function getApiBaseUrl(): string {
-  // Client in browser: use proxy when on production domain (avoids CORS to localhost)
+  const useSupabase = process.env.NEXT_PUBLIC_USE_SUPABASE === "true";
+  if (useSupabase) return "/api/supabase";
+
   if (typeof window !== "undefined") {
     const isProduction = !window.location.hostname.includes("localhost") && !window.location.hostname.includes("127.0.0.1");
-    if (isProduction) {
-      return "/api/backend"; // Always proxy when deployed - no localhost
-    }
+    if (isProduction) return "/api/backend";
     return process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
   }
-  // Server: use BACKEND_API_URL or NEXT_PUBLIC_API_URL
   const serverUrl = process.env.BACKEND_API_URL || process.env.NEXT_PUBLIC_API_URL;
   if (serverUrl) return serverUrl;
   return "http://localhost:5000/api";

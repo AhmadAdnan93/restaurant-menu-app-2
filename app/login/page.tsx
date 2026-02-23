@@ -34,8 +34,8 @@ export default function LoginPage() {
         title: "Success!",
         description: "Logged in successfully",
       });
-      // Warm backend so admin loads fast
-      if (typeof window !== "undefined") {
+      // Warm backend so admin loads fast (skip when using Supabase)
+      if (typeof window !== "undefined" && process.env.NEXT_PUBLIC_USE_SUPABASE !== "true") {
         fetch(`${window.location.origin}/api/backend/restaurants?publishedOnly=false`, {
           headers: { Authorization: `Bearer ${response.token}` },
         }).catch(() => {});
