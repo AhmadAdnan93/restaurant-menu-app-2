@@ -6,8 +6,7 @@ import { ImageSlider } from "@/components/ImageSlider";
 import { Rating } from "@/components/Rating";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { QRCode } from "@/components/QRCode";
-import { restaurantsApi } from "@/lib/api-client";
-import { getMockRestaurantBySlug, type MockRestaurant } from "@/lib/mock-data";
+import { getRestaurantBySlug } from "@/lib/supabase/menu";
 
 // Always fetch fresh menu data when admin adds/edits items
 export const dynamic = "force-dynamic";
@@ -32,38 +31,18 @@ async function getMenuBaseUrl(): Promise<string> {
   return baseFromHost;
 }
 
-async function getRestaurant(slug: string): Promise<MockRestaurant | null> {
-  // Clean slug - remove any leading slashes or /menu/ prefix (handle multiple /menu/ prefixes)
-  let cleanSlug = slug;
-  // Remove all /menu/ prefixes
-  while (cleanSlug.startsWith('/menu/') || cleanSlug.startsWith('menu/')) {
-    cleanSlug = cleanSlug.replace(/^\/?menu\//, '');
+async function getRestaurant(slug: string) {
+  // Clean slug - remove any leading slashes or /menu/ prefix
+  let cleanSlug = (slug || "").trim();
+  while (cleanSlug.startsWith("/menu/") || cleanSlug.startsWith("menu/")) {
+    cleanSlug = cleanSlug.replace(/^\/?menu\//, "");
   }
-  // Remove leading/trailing slashes
-  cleanSlug = cleanSlug.replace(/^\/+/, '').replace(/\/+$/, '');
-  
-  try {
-    const restaurant = await restaurantsApi.getBySlug(cleanSlug);
-    if (restaurant) {
-      // Transform API response to match expected format
-      const r = restaurant as { categories?: Array<{ menuItems?: unknown[] }>; [key: string]: unknown };
-      return {
-        ...restaurant,
-        categories: (r.categories || []).map((cat: any) => ({
-          ...cat,
-          menuItems: (cat.menuItems || []).map((item: any) => ({
-            ...item,
-            ratings: [] // Ratings handled separately in API
-          }))
-        }))
-      } as MockRestaurant;
-    }
-  } catch (error) {
-    console.error("API error, using mock data:", error);
-  }
+  cleanSlug = cleanSlug.replace(/^\/+/, "").replace(/\/+$/, "");
 
-  // Fallback to mock data
-  return getMockRestaurantBySlug(cleanSlug) ?? null;
+  const restaurant = await getRestaurantBySlug(cleanSlug);
+  if (restaurant) return restaurant;
+
+  return null;
 }
 
 export default async function MenuPage({
