@@ -21,6 +21,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { getMockRestaurantById } from "@/lib/mock-data";
 import { ImageUpload } from "@/components/ImageUpload";
 import { categoriesApi, menuItemsApi, restaurantsApi } from "@/lib/api-client";
+import { ensureAbsoluteImageUrl } from "@/lib/image-utils";
 
 interface Category {
   id: string;
@@ -903,43 +904,55 @@ export default function RestaurantManagePage() {
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       {category.menuItems.map((item) => (
-                        <Card key={item.id} className="p-4">
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex-1 min-w-0">
-                              <h4 className="font-semibold mb-2">{item.name}</h4>
-                              <p className="text-sm text-gray-600 mb-2">
+                        <Card key={item.id} className="overflow-hidden">
+                          <div className="flex flex-col sm:flex-row">
+                            <div className="w-full sm:w-28 h-28 sm:h-auto sm:min-h-[100px] bg-gray-100 flex-shrink-0">
+                              {item.image ? (
+                                <img
+                                  src={ensureAbsoluteImageUrl(item.image)}
+                                  alt={item.name}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">No image</div>
+                              )}
+                            </div>
+                            <div className="p-4 flex-1 min-w-0 flex flex-col">
+                              <h4 className="font-semibold mb-1">{item.name}</h4>
+                              <p className="text-sm text-gray-600 mb-2 line-clamp-2 flex-1">
                                 {item.description}
                               </p>
-                              <p className="text-lg font-bold text-primary">
+                              <p className="text-lg font-bold text-primary mb-3">
                                 ${item.price.toFixed(2)}
                               </p>
-                            </div>
-                            <div className="flex items-center gap-1 shrink-0">
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-8 w-8 p-0"
-                                onClick={() => {
-                                  setEditingMenuItem(item);
-                                  setMenuItemForm({
-                                    name: item.name,
-                                    description: item.description,
-                                    price: String(item.price),
-                                    image: item.image || "",
-                                    order: item.order,
-                                  });
-                                }}
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                                onClick={() => handleDeleteMenuItem(item)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => {
+                                    setEditingMenuItem(item);
+                                    setMenuItemForm({
+                                      name: item.name,
+                                      description: item.description,
+                                      price: String(item.price),
+                                      image: item.image || "",
+                                      order: item.order,
+                                    });
+                                  }}
+                                >
+                                  <Edit className="h-4 w-4 mr-1" />
+                                  Edit
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                  onClick={() => handleDeleteMenuItem(item)}
+                                >
+                                  <Trash2 className="h-4 w-4 mr-1" />
+                                  Delete
+                                </Button>
+                              </div>
                             </div>
                           </div>
                         </Card>
