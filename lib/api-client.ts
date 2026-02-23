@@ -84,6 +84,8 @@ async function withRetryOn504<T>(
         msg.includes("timed out") ||
         msg.includes("timeout") ||
         msg.includes("504") ||
+        msg.includes("502") ||
+        msg.includes("bad gateway") ||
         msg.includes("network") ||
         msg.includes("failed to fetch");
       if (!isRetriable || attempt >= maxAttempts) throw lastError;
@@ -149,29 +151,34 @@ export const restaurantsApi = {
       token,
     }),
 
-  delete: async (id: string, token: string) => {
-    const baseUrl = getApiBaseUrl();
-    const controller = new AbortController();
-    const t = setTimeout(() => controller.abort(), 25000);
-    try {
-      const response = await fetch(`${baseUrl}/restaurants/${id}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` },
-        signal: controller.signal,
-        cache: 'no-store',
-      });
-      clearTimeout(t);
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: response.statusText }));
-        throw new Error(error.error || error.message || 'Failed to delete restaurant');
-      }
-      return response.status === 204 ? {} : response.json();
-    } catch (e: any) {
-      clearTimeout(t);
-      if (e?.name === 'AbortError') throw new Error('Request timed out. Try again.');
-      throw e;
-    }
-  },
+  delete: (id: string, token: string) =>
+    withRetryOn504(
+      async () => {
+        const baseUrl = getApiBaseUrl();
+        const controller = new AbortController();
+        const t = setTimeout(() => controller.abort(), 25000);
+        try {
+          const response = await fetch(`${baseUrl}/restaurants/${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` },
+            signal: controller.signal,
+            cache: 'no-store',
+          });
+          clearTimeout(t);
+          if (!response.ok) {
+            const error = await response.json().catch(() => ({ message: response.statusText }));
+            throw new Error(error.error || error.message || 'Failed to delete restaurant');
+          }
+          return response.status === 204 ? {} : response.json();
+        } catch (e: any) {
+          clearTimeout(t);
+          if (e?.name === 'AbortError') throw new Error('Request timed out. Try again.');
+          throw e;
+        }
+      },
+      3,
+      2000
+    ),
 };
 
 // Categories API

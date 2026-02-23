@@ -30,7 +30,7 @@ interface Restaurant {
   _count?: { categories: number };
 }
 
-const SLOW_THRESHOLD_MS = 5000; // Show "Wake backend" after 5s
+const SLOW_THRESHOLD_MS = 3000; // Show "Wake backend" after 3s
 
 export default function AdminPage() {
   const router = useRouter();
@@ -49,7 +49,6 @@ export default function AdminPage() {
   const [showWakeRetry, setShowWakeRetry] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [restaurantToDelete, setRestaurantToDelete] = useState<Restaurant | null>(null);
-  const [deleting, setDeleting] = useState(false);
   const slowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -127,38 +126,31 @@ export default function AdminPage() {
   const handleDeleteConfirm = async () => {
     if (!restaurantToDelete) return;
 
-    setDeleting(true);
+    const token = auth.getToken();
+    if (!token) {
+      toast({ title: "Error", description: "Please log in again.", variant: "destructive" });
+      router.push('/login');
+      return;
+    }
+
+    const toDelete = restaurantToDelete;
+    setDeleteDialogOpen(false);
+    setRestaurantToDelete(null);
+    setRestaurants((prev) => prev.filter((r) => r.id !== toDelete.id));
+    setCachedRestaurants(restaurants.filter((r) => r.id !== toDelete.id));
+    toast({ title: "Deleted", description: "Restaurant removed." });
+
     try {
-      const token = auth.getToken();
-      if (!token) {
-        toast({
-          title: "Error",
-          description: "Please log in again.",
-          variant: "destructive",
-        });
-        router.push('/login');
-        return;
-      }
-
-      await restaurantsApi.delete(restaurantToDelete.id, token);
-      
-      toast({
-        title: "Success",
-        description: "Restaurant deleted successfully.",
-      });
-
-      setRestaurants(restaurants.filter(r => r.id !== restaurantToDelete.id));
-      setDeleteDialogOpen(false);
-      setRestaurantToDelete(null);
+      await restaurantsApi.delete(toDelete.id, token);
     } catch (error: any) {
       console.error("Error deleting restaurant:", error);
+      setRestaurants((prev) => [...prev, toDelete]);
+      setCachedRestaurants(restaurants);
       toast({
-        title: "Error",
-        description: error.message || "Failed to delete restaurant. Please try again.",
+        title: "Delete failed",
+        description: error.message || "Please try again.",
         variant: "destructive",
       });
-    } finally {
-      setDeleting(false);
     }
   };
 
@@ -263,16 +255,14 @@ export default function AdminPage() {
                 setDeleteDialogOpen(false);
                 setRestaurantToDelete(null);
               }}
-              disabled={deleting}
             >
               Cancel
             </Button>
             <Button
               variant="destructive"
               onClick={handleDeleteConfirm}
-              disabled={deleting}
             >
-              {deleting ? "Deleting..." : "Delete"}
+              Delete
             </Button>
           </DialogFooter>
         </DialogContent>
