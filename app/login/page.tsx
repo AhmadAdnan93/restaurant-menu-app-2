@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,17 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (mounted && auth.getToken()) {
+      router.replace("/");
+    }
+  }, [mounted, router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,7 +47,7 @@ export default function LoginPage() {
         title: t.success,
         description: t.loggedInSuccess,
       });
-      router.push(response.role === "SUPER_ADMIN" || response.role === "RESTAURANT_OWNER" ? "/admin" : "/");
+      router.replace("/");
       router.refresh();
     } catch (error: any) {
       toast({
@@ -48,6 +59,14 @@ export default function LoginPage() {
       setLoading(false);
     }
   };
+
+  if (mounted && auth.getToken()) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 p-4">
@@ -89,9 +108,12 @@ export default function LoginPage() {
             <p className="mt-2">Super Admin: admin@restaurantmenu.com / Admin@123</p>
             <p>Owner: mario@marioskitchen.com / Mario@123</p>
           </div>
-          <div className="mt-4 text-center">
+          <div className="mt-4 text-center space-y-2">
+            <p className="text-sm text-gray-500">
+              {t.viewRestaurants} (no login required)
+            </p>
             <Button asChild variant="link">
-              <Link href="/">{t.backToHome}</Link>
+              <Link href="/restaurants">{t.viewRestaurants}</Link>
             </Button>
           </div>
         </CardContent>
