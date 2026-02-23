@@ -28,8 +28,8 @@ This script creates the storage bucket and admin user for you.
    ```powershell
    $env:NEXT_PUBLIC_SUPABASE_URL="https://YOUR-PROJECT-ID.supabase.co"
    $env:SUPABASE_SERVICE_ROLE_KEY="your-service-role-key-here"
-   $env:ADMIN_EMAIL="admin@restaurantmenu.com"
-   $env:ADMIN_PASSWORD="Admin@123"
+   $env:ADMIN_EMAIL="ahmad_selwawe93@yahoo.com"
+   $env:ADMIN_PASSWORD="Ahmad@123"
    node scripts/setup-supabase.mjs
    ```
 
@@ -37,8 +37,8 @@ This script creates the storage bucket and admin user for you.
    ```bash
    NEXT_PUBLIC_SUPABASE_URL="https://YOUR-PROJECT-ID.supabase.co" \
    SUPABASE_SERVICE_ROLE_KEY="your-service-role-key-here" \
-   ADMIN_EMAIL="admin@restaurantmenu.com" \
-   ADMIN_PASSWORD="Admin@123" \
+   ADMIN_EMAIL="ahmad_selwawe93@yahoo.com" \
+   ADMIN_PASSWORD="Ahmad@123" \
    node scripts/setup-supabase.mjs
    ```
 
@@ -74,7 +74,7 @@ This script creates the storage bucket and admin user for you.
 ## Done
 
 Open your app URL and log in with:
-- **Email:** admin@restaurantmenu.com  
-- **Password:** Admin@123  
+- **Email:** ahmad_selwawe93@yahoo.com  
+- **Password:** Ahmad@123  
 
 You can change this password later in Supabase → Authentication → Users.

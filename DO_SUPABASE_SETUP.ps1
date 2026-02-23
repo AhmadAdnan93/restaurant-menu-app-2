@@ -16,11 +16,11 @@ Read-Host
 Write-Host "`nSTEP 3 & 4: Run setup script (creates bucket + admin user)" -ForegroundColor Yellow
 $url = Read-Host "Paste your Supabase Project URL (e.g. https://xxx.supabase.co)"
 $key = Read-Host "Paste your Supabase service_role key"
-$email = Read-Host "Admin email (press Enter for admin@restaurantmenu.com)"
-$password = Read-Host "Admin password (press Enter for Admin@123)"
+$email = Read-Host "Admin email (press Enter for ahmad_selwawe93@yahoo.com)"
+$password = Read-Host "Admin password (press Enter for Ahmad@123)"
 
-if ([string]::IsNullOrWhiteSpace($email)) { $email = "admin@restaurantmenu.com" }
-if ([string]::IsNullOrWhiteSpace($password)) { $password = "Admin@123" }
+if ([string]::IsNullOrWhiteSpace($email)) { $email = "ahmad_selwawe93@yahoo.com" }
+if ([string]::IsNullOrWhiteSpace($password)) { $password = "Ahmad@123" }
 
 $env:NEXT_PUBLIC_SUPABASE_URL = $url
 $env:SUPABASE_SERVICE_ROLE_KEY = $key
