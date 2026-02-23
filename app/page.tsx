@@ -16,12 +16,15 @@ export default function Home() {
         <p className="text-xl text-gray-600 mb-8">
           {t.appTagline}
         </p>
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+        <div className="flex flex-col sm:flex-row gap-4 justify-center flex-wrap">
           <Button asChild size="lg" className="text-lg px-8 py-6">
             <Link href="/admin">{t.adminPanel}</Link>
           </Button>
           <Button asChild size="lg" variant="outline" className="text-lg px-8 py-6">
             <Link href="/restaurants">{t.viewRestaurants}</Link>
+          </Button>
+          <Button asChild size="lg" variant="outline" className="text-lg px-8 py-6">
+            <Link href="/login">{t.login}</Link>
           </Button>
         </div>
       </div>
