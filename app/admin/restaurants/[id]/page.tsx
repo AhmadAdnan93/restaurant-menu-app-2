@@ -20,7 +20,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { getMockRestaurantById } from "@/lib/mock-data";
 import { ImageUpload } from "@/components/ImageUpload";
-import { categoriesApi, menuItemsApi } from "@/lib/api-client";
+import { categoriesApi, menuItemsApi, restaurantsApi } from "@/lib/api-client";
 
 interface Category {
   id: string;
@@ -44,6 +44,7 @@ interface Restaurant {
   name: string;
   slug: string;
   logo: string | null;
+  coverImage?: string | null;
   description: string | null;
   categories: Category[];
 }
@@ -96,6 +97,15 @@ export default function RestaurantManagePage() {
   const [creatingMenuItem, setCreatingMenuItem] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [editingMenuItem, setEditingMenuItem] = useState<MenuItem | null>(null);
+  const [restaurantEditOpen, setRestaurantEditOpen] = useState(false);
+  const [restaurantEditForm, setRestaurantEditForm] = useState({
+    name: "",
+    slug: "",
+    logo: "",
+    coverImage: "",
+    description: "",
+  });
+  const [savingRestaurant, setSavingRestaurant] = useState(false);
   const retryCountRef = useRef(0);
 
   const fetchRestaurant = useCallback(async () => {
@@ -238,6 +248,57 @@ export default function RestaurantManagePage() {
     }
   };
 
+  const openRestaurantEdit = () => {
+    if (restaurant) {
+      setRestaurantEditForm({
+        name: restaurant.name,
+        slug: restaurant.slug,
+        logo: restaurant.logo || "",
+        coverImage: restaurant.coverImage || "",
+        description: restaurant.description || "",
+      });
+      setRestaurantEditOpen(true);
+    }
+  };
+
+  const handleSaveRestaurant = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const token = localStorage.getItem("auth_token");
+    if (!token || !restaurant) return;
+    setSavingRestaurant(true);
+    try {
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          await restaurantsApi.update(
+            restaurant.id,
+            {
+              name: restaurantEditForm.name,
+              slug: restaurantEditForm.slug.trim().replace(/^\/menu\//, "").replace(/^\//, "").replace(/\/$/, ""),
+              logo: restaurantEditForm.logo || null,
+              coverImage: restaurantEditForm.coverImage || null,
+              description: restaurantEditForm.description || null,
+            },
+            token
+          );
+          toast({ title: "Success!", description: "Restaurant updated." });
+          setRestaurantEditOpen(false);
+          fetchRestaurant();
+          return;
+        } catch (err: any) {
+          const msg = (err?.message || "").toLowerCase();
+          const isRetriable = msg.includes("timeout") || msg.includes("504") || msg.includes("502") || err?.name === "AbortError";
+          if (!isRetriable || attempt >= 3) throw err;
+          toast({ title: "Retrying...", description: `Attempt ${attempt} failed. Retrying...` });
+          await new Promise((r) => setTimeout(r, 2000));
+        }
+      }
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message || "Failed to update restaurant.", variant: "destructive" });
+    } finally {
+      setSavingRestaurant(false);
+    }
+  };
+
   const handleCreateCategory = async (e: React.FormEvent) => {
     e.preventDefault();
     setCreatingCategory(true);
@@ -268,17 +329,25 @@ export default function RestaurantManagePage() {
     }
   };
 
-  const doCreateMenuItem = async (attempt: number): Promise<boolean> => {
+  const doCreateMenuItem = async (attempt: number, skipImage: boolean): Promise<boolean> => {
     const token = localStorage.getItem('auth_token');
     if (!token) return false;
+    const payload = {
+      name: menuItemForm.name,
+      description: menuItemForm.description,
+      price: parseFloat(String(menuItemForm.price).replace(/[^\d.-]/g, '')) || 0,
+      image: skipImage ? null : (menuItemForm.image || null),
+      order: menuItemForm.order,
+    };
     try {
-      await menuItemsApi.create(menuItemDialogOpen!, {
-        name: menuItemForm.name,
-        description: menuItemForm.description,
-        price: parseFloat(String(menuItemForm.price).replace(/[^\d.-]/g, '')) || 0,
-        image: menuItemForm.image || null,
-        order: menuItemForm.order,
-      }, token);
+      const created = await menuItemsApi.create(menuItemDialogOpen!, payload, token);
+      if (skipImage && menuItemForm.image && (created as any)?.id) {
+        try {
+          await menuItemsApi.update((created as any).id, { image: menuItemForm.image }, token);
+        } catch {
+          // Item created, image update failed - user can edit to add image
+        }
+      }
       return true;
     } catch (e: any) {
       const msg = e?.message?.toLowerCase() || '';
@@ -294,7 +363,8 @@ export default function RestaurantManagePage() {
     setCreatingMenuItem(true);
     try {
       for (let attempt = 1; attempt <= 3; attempt++) {
-        const ok = await doCreateMenuItem(attempt);
+        const skipImage = attempt > 1 && !!menuItemForm.image;
+        const ok = await doCreateMenuItem(attempt, skipImage);
         if (ok) {
           toast({ title: "Success!", description: "Menu item created." });
           setMenuItemDialogOpen(null);
@@ -303,7 +373,8 @@ export default function RestaurantManagePage() {
           return;
         }
         if (attempt < 3) {
-          toast({ title: "Retrying...", description: `Attempt ${attempt} timed out. Retrying...` });
+          const msg = menuItemForm.image ? `Attempt ${attempt} failed. Trying without image first...` : `Attempt ${attempt} timed out. Retrying...`;
+          toast({ title: "Retrying...", description: msg });
           await new Promise(r => setTimeout(r, 2000));
         }
       }
@@ -383,12 +454,18 @@ export default function RestaurantManagePage() {
                 <ArrowLeft className="h-5 w-5" />
               </Link>
             </Button>
-            <div>
+            <div className="flex-1">
               <h1 className="text-3xl font-bold text-gray-900">
                 {restaurant!.name}
               </h1>
               <p className="text-gray-600">Manage menu and categories</p>
             </div>
+            <Button asChild variant="outline" size="sm">
+              <Link href={`/admin/restaurants/${id}/edit`}>
+                <Edit className="h-4 w-4 mr-2" />
+                Edit Restaurant
+              </Link>
+            </Button>
           </div>
         </div>
       </header>
@@ -405,6 +482,73 @@ export default function RestaurantManagePage() {
             )}
           </div>
         )}
+        <Card className="mb-6">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Restaurant details</CardTitle>
+                <CardDescription>Edit name, logo, cover image, and description</CardDescription>
+              </div>
+              <Button
+                variant={restaurantEditOpen ? "outline" : "default"}
+                size="sm"
+                onClick={() => (restaurantEditOpen ? setRestaurantEditOpen(false) : openRestaurantEdit())}
+              >
+                <Edit className="h-4 w-4 mr-2" />
+                {restaurantEditOpen ? "Close" : "Edit name, logo & cover"}
+              </Button>
+            </div>
+          </CardHeader>
+          {restaurantEditOpen && (
+            <CardContent>
+              <form onSubmit={handleSaveRestaurant} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="rest-name">Restaurant Name *</Label>
+                  <Input
+                    id="rest-name"
+                    value={restaurantEditForm.name}
+                    onChange={(e) => setRestaurantEditForm({ ...restaurantEditForm, name: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="rest-slug">URL Slug *</Label>
+                  <Input
+                    id="rest-slug"
+                    value={restaurantEditForm.slug}
+                    onChange={(e) => setRestaurantEditForm({ ...restaurantEditForm, slug: e.target.value })}
+                    required
+                  />
+                  <p className="text-sm text-gray-500">Menu URL: /menu/{restaurantEditForm.slug || "your-slug"}</p>
+                </div>
+                <ImageUpload
+                  label="Logo (profile photo)"
+                  value={restaurantEditForm.logo}
+                  onChange={(url) => setRestaurantEditForm({ ...restaurantEditForm, logo: url })}
+                  maxSizeMB={5}
+                />
+                <ImageUpload
+                  label="Cover image"
+                  value={restaurantEditForm.coverImage}
+                  onChange={(url) => setRestaurantEditForm({ ...restaurantEditForm, coverImage: url })}
+                  maxSizeMB={5}
+                />
+                <div className="space-y-2">
+                  <Label htmlFor="rest-desc">Description</Label>
+                  <Textarea
+                    id="rest-desc"
+                    value={restaurantEditForm.description}
+                    onChange={(e) => setRestaurantEditForm({ ...restaurantEditForm, description: e.target.value })}
+                    rows={3}
+                  />
+                </div>
+                <Button type="submit" disabled={savingRestaurant}>
+                  {savingRestaurant ? "Saving..." : "Save changes"}
+                </Button>
+              </form>
+            </CardContent>
+          )}
+        </Card>
         <div className="mb-6">
           <Dialog
             open={!!editingCategory}

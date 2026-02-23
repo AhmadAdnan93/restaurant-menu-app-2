@@ -149,6 +149,7 @@ export const restaurantsApi = {
       method: 'PUT',
       body: data,
       token,
+      timeoutMs: 25000,
     }),
 
   delete: (id: string, token: string) =>
