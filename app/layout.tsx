@@ -23,7 +23,7 @@ export default function RootLayout({
       <head>
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){var t=document.documentElement;var l=localStorage.getItem('locale')||'en';var th=localStorage.getItem('theme')||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');t.setAttribute('dir',l==='ar'?'rtl':'ltr');t.setAttribute('lang',l==='ar'?'ar':'en');t.classList.toggle('dark',th==='dark');})();`,
+            __html: `(function(){var t=document.documentElement;var l=localStorage.getItem('locale')||'en';var th=localStorage.getItem('theme')||'light';t.setAttribute('dir',l==='ar'?'rtl':'ltr');t.setAttribute('lang',l==='ar'?'ar':'en');t.classList.toggle('dark',th==='dark');})();`,
           }}
         />
       </head>
