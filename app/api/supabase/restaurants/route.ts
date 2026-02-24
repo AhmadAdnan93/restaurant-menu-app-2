@@ -92,7 +92,11 @@ export async function POST(request: NextRequest) {
         logo: body.logo || null,
         cover_image: body.coverImage ?? body.cover_image ?? null,
         description: body.description || null,
-        is_published: body.isPublished ?? false,
+        website: body.website || null,
+        phone: body.phone || null,
+        facebook_url: body.facebookUrl || null,
+        instagram_url: body.instagramUrl || null,
+        is_published: body.isPublished ?? true,
       })
       .select()
       .single();

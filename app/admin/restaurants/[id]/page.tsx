@@ -47,6 +47,10 @@ interface Restaurant {
   logo: string | null;
   coverImage?: string | null;
   description: string | null;
+  website?: string | null;
+  phone?: string | null;
+  facebookUrl?: string | null;
+  instagramUrl?: string | null;
   categories: Category[];
 }
 
@@ -77,7 +81,7 @@ export default function RestaurantManagePage() {
     if (fromList) return { id, name: fromList.name, slug: fromList.slug, logo: null, description: null, categories: [] };
     return null;
   });
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [fetchFailed, setFetchFailed] = useState(false);
   const [notFound404, setNotFound404] = useState(false);
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
@@ -105,6 +109,10 @@ export default function RestaurantManagePage() {
     logo: "",
     coverImage: "",
     description: "",
+    website: "",
+    phone: "",
+    facebookUrl: "",
+    instagramUrl: "",
   });
   const [savingRestaurant, setSavingRestaurant] = useState(false);
   const retryCountRef = useRef(0);
@@ -121,11 +129,9 @@ export default function RestaurantManagePage() {
         return;
       }
 
-      const isProd = typeof window !== "undefined" && !window.location.hostname.includes("localhost") && !window.location.hostname.includes("127.0.0.1");
-      const apiUrl = isProd ? `${window.location.origin}/api/backend` : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api");
       const controller = new AbortController();
       const t = setTimeout(() => controller.abort(), 20000);
-      const response = await fetch(`${apiUrl}/restaurants/${id}`, {
+      const response = await fetch(`/api/supabase/restaurants/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
         signal: controller.signal,
         cache: "no-store",
@@ -257,6 +263,10 @@ export default function RestaurantManagePage() {
         logo: restaurant.logo || "",
         coverImage: restaurant.coverImage || "",
         description: restaurant.description || "",
+        website: restaurant.website || "",
+        phone: restaurant.phone || "",
+        facebookUrl: restaurant.facebookUrl || "",
+        instagramUrl: restaurant.instagramUrl || "",
       });
       setRestaurantEditOpen(true);
     }
@@ -278,6 +288,10 @@ export default function RestaurantManagePage() {
               logo: restaurantEditForm.logo || null,
               coverImage: restaurantEditForm.coverImage || null,
               description: restaurantEditForm.description || null,
+              website: restaurantEditForm.website || null,
+              phone: restaurantEditForm.phone || null,
+              facebookUrl: restaurantEditForm.facebookUrl || null,
+              instagramUrl: restaurantEditForm.instagramUrl || null,
             },
             token
           );
@@ -391,10 +405,18 @@ export default function RestaurantManagePage() {
     }
   };
 
-  const hasData = restaurant && (restaurant.categories?.length !== undefined || restaurant.name);
+  const hasData = restaurant != null && (restaurant.categories?.length !== undefined || restaurant.name);
   const showNotFound = notFound404 && !hasData;
   const showFetchFailed = fetchFailed && !hasData && !loading;
   const showLoading = !hasData && loading;
+
+  if (!restaurant && !showLoading && !showFetchFailed && !showNotFound) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
+    );
+  }
 
   if (showLoading) {
     return (
@@ -457,7 +479,7 @@ export default function RestaurantManagePage() {
             </Button>
             <div className="flex-1">
               <h1 className="text-3xl font-bold text-gray-900">
-                {restaurant!.name}
+                {restaurant?.name ?? "Restaurant"}
               </h1>
               <p className="text-gray-600">Manage menu and categories</p>
             </div>
@@ -542,6 +564,51 @@ export default function RestaurantManagePage() {
                     onChange={(e) => setRestaurantEditForm({ ...restaurantEditForm, description: e.target.value })}
                     rows={3}
                   />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="rest-website">Website URL</Label>
+                    <Input
+                      id="rest-website"
+                      type="url"
+                      placeholder="https://example.com"
+                      value={restaurantEditForm.website}
+                      onChange={(e) => setRestaurantEditForm({ ...restaurantEditForm, website: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="rest-phone">Phone / WhatsApp</Label>
+                    <Input
+                      id="rest-phone"
+                      type="tel"
+                      placeholder="+1234567890"
+                      value={restaurantEditForm.phone}
+                      onChange={(e) => setRestaurantEditForm({ ...restaurantEditForm, phone: e.target.value })}
+                    />
+                    <p className="text-xs text-gray-500">With country code (e.g. +971501234567)</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="rest-facebook">Facebook URL</Label>
+                    <Input
+                      id="rest-facebook"
+                      type="url"
+                      placeholder="https://facebook.com/yourpage"
+                      value={restaurantEditForm.facebookUrl}
+                      onChange={(e) => setRestaurantEditForm({ ...restaurantEditForm, facebookUrl: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="rest-instagram">Instagram URL</Label>
+                    <Input
+                      id="rest-instagram"
+                      type="url"
+                      placeholder="https://instagram.com/yourpage"
+                      value={restaurantEditForm.instagramUrl}
+                      onChange={(e) => setRestaurantEditForm({ ...restaurantEditForm, instagramUrl: e.target.value })}
+                    />
+                  </div>
                 </div>
                 <Button type="submit" disabled={savingRestaurant}>
                   {savingRestaurant ? "Saving..." : "Save changes"}
@@ -796,7 +863,7 @@ export default function RestaurantManagePage() {
                       if (open && typeof window !== 'undefined') {
                         const token = localStorage.getItem('auth_token');
                         if (token) {
-                          fetch(`${window.location.origin}/api/backend/restaurants/${id}`, {
+                          fetch(`/api/supabase/restaurants/${id}`, {
                             headers: { Authorization: `Bearer ${token}` },
                           }).catch(() => {});
                         }

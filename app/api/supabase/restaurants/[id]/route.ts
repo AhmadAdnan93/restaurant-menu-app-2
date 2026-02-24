@@ -76,6 +76,10 @@ export async function GET(
       logo: restaurant.logo,
       coverImage: restaurant.cover_image,
       description: restaurant.description,
+      website: restaurant.website || null,
+      phone: restaurant.phone || null,
+      facebookUrl: restaurant.facebook_url || null,
+      instagramUrl: restaurant.instagram_url || null,
       isPublished: restaurant.is_published,
       qrCode: restaurant.qr_code,
       categories: categoriesWithItems,
@@ -129,6 +133,10 @@ export async function PUT(
     if (body.logo !== undefined) updates.logo = body.logo;
     if (body.coverImage !== undefined) updates.cover_image = body.coverImage;
     if (body.description !== undefined) updates.description = body.description;
+    if (body.website !== undefined) updates.website = body.website;
+    if (body.phone !== undefined) updates.phone = body.phone;
+    if (body.facebookUrl !== undefined) updates.facebook_url = body.facebookUrl;
+    if (body.instagramUrl !== undefined) updates.instagram_url = body.instagramUrl;
     if (body.isPublished !== undefined) updates.is_published = body.isPublished;
     updates.updated_at = new Date().toISOString();
 
@@ -148,6 +156,10 @@ export async function PUT(
       logo: data.logo,
       coverImage: data.cover_image,
       description: data.description,
+      website: data.website || null,
+      phone: data.phone || null,
+      facebookUrl: data.facebook_url || null,
+      instagramUrl: data.instagram_url || null,
       isPublished: data.is_published,
       qrCode: data.qr_code,
       createdAt: data.created_at,

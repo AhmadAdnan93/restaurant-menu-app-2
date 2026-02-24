@@ -7,6 +7,10 @@ export interface MenuRestaurant {
   logo: string | null;
   coverImage: string | null;
   description: string | null;
+  website: string | null;
+  phone: string | null;
+  facebookUrl: string | null;
+  instagramUrl: string | null;
   categories: Array<{
     id: string;
     name: string;
@@ -98,6 +102,10 @@ export async function getRestaurantBySlug(slug: string): Promise<MenuRestaurant 
     logo: restaurant.logo,
     coverImage: restaurant.cover_image,
     description: restaurant.description,
+    website: restaurant.website || null,
+    phone: restaurant.phone || null,
+    facebookUrl: restaurant.facebook_url || null,
+    instagramUrl: restaurant.instagram_url || null,
     categories: categoriesWithItems,
   };
 }

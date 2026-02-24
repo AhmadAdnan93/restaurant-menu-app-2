@@ -27,6 +27,10 @@ export default function EditRestaurantPage() {
     logo: "",
     coverImage: "",
     description: "",
+    website: "",
+    phone: "",
+    facebookUrl: "",
+    instagramUrl: "",
     isPublished: true,
   });
 
@@ -36,8 +40,7 @@ export default function EditRestaurantPage() {
       router.push("/login");
       return;
     }
-    const isProd = typeof window !== "undefined" && !window.location.hostname.includes("localhost");
-    const base = isProd ? `${window.location.origin}/api/backend` : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api");
+    const base = "/api/supabase";
     fetch(`${base}/restaurants/${id}`, {
       headers: { Authorization: `Bearer ${token}` },
     })
@@ -50,6 +53,10 @@ export default function EditRestaurantPage() {
             logo: data.logo || "",
             coverImage: data.coverImage || "",
             description: data.description || "",
+            website: data.website || "",
+            phone: data.phone || "",
+            facebookUrl: data.facebookUrl || "",
+            instagramUrl: data.instagramUrl || "",
             isPublished: data.isPublished ?? true,
           });
         }
@@ -74,6 +81,10 @@ export default function EditRestaurantPage() {
         logo: formData.logo || null,
         coverImage: formData.coverImage || null,
         description: formData.description || null,
+        website: formData.website || null,
+        phone: formData.phone || null,
+        facebookUrl: formData.facebookUrl || null,
+        instagramUrl: formData.instagramUrl || null,
         isPublished: formData.isPublished,
       };
       await restaurantsApi.update(id, cleanedData, token);
@@ -185,6 +196,55 @@ export default function EditRestaurantPage() {
                   rows={4}
                   className="dark:bg-gray-700 dark:text-white"
                 />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="website">Website URL</Label>
+                  <Input
+                    id="website"
+                    type="url"
+                    placeholder="https://example.com"
+                    value={formData.website}
+                    onChange={(e) => setFormData({ ...formData, website: e.target.value })}
+                    className="dark:bg-gray-700 dark:text-white"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Phone / WhatsApp</Label>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    placeholder="+1234567890"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    className="dark:bg-gray-700 dark:text-white"
+                  />
+                  <p className="text-xs text-gray-500">With country code for WhatsApp</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="facebook">Facebook URL</Label>
+                  <Input
+                    id="facebook"
+                    type="url"
+                    placeholder="https://facebook.com/yourpage"
+                    value={formData.facebookUrl}
+                    onChange={(e) => setFormData({ ...formData, facebookUrl: e.target.value })}
+                    className="dark:bg-gray-700 dark:text-white"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="instagram">Instagram URL</Label>
+                  <Input
+                    id="instagram"
+                    type="url"
+                    placeholder="https://instagram.com/yourpage"
+                    value={formData.instagramUrl}
+                    onChange={(e) => setFormData({ ...formData, instagramUrl: e.target.value })}
+                    className="dark:bg-gray-700 dark:text-white"
+                  />
+                </div>
               </div>
               <div className="flex gap-4">
                 <Button type="submit" disabled={loading}>

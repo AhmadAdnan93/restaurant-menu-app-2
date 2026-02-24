@@ -23,6 +23,11 @@ export default function NewRestaurantPage() {
     logo: "",
     coverImage: "",
     description: "",
+    website: "",
+    phone: "",
+    facebookUrl: "",
+    instagramUrl: "",
+    isPublished: true,
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -42,10 +47,15 @@ export default function NewRestaurantPage() {
         return;
       }
 
-      // Clean the slug before sending
+      // Clean the slug before sending (default published so it appears on public list)
       const cleanedData = {
         ...formData,
         slug: cleanSlug(formData.slug),
+        website: formData.website || null,
+        phone: formData.phone || null,
+        facebookUrl: formData.facebookUrl || null,
+        instagramUrl: formData.instagramUrl || null,
+        isPublished: formData.isPublished ?? true,
       };
 
       // Use api-client (goes through /api/backend proxy) so auth header is forwarded correctly
@@ -55,6 +65,21 @@ export default function NewRestaurantPage() {
         title: "Success!",
         description: "Restaurant created successfully.",
       });
+
+      if (restaurant?.id && typeof window !== "undefined") {
+        try {
+          const raw = sessionStorage.getItem("admin_restaurants_list");
+          const list = raw ? JSON.parse(raw) : [];
+          list.unshift({
+            id: restaurant.id,
+            name: restaurant.name ?? cleanedData.name,
+            slug: restaurant.slug ?? cleanedData.slug,
+            categoryCount: 0,
+            _count: { categories: 0 },
+          });
+          sessionStorage.setItem("admin_restaurants_list", JSON.stringify(list));
+        } catch {}
+      }
 
       router.push(`/admin/restaurants/${restaurant.id}`);
     } catch (error: any) {
@@ -170,6 +195,52 @@ export default function NewRestaurantPage() {
                   placeholder="A brief description of your restaurant..."
                   rows={4}
                 />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="website">Website URL</Label>
+                  <Input
+                    id="website"
+                    type="url"
+                    placeholder="https://example.com"
+                    value={formData.website}
+                    onChange={(e) => setFormData({ ...formData, website: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Phone / WhatsApp</Label>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    placeholder="+1234567890"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  />
+                  <p className="text-xs text-gray-500">With country code (e.g. +971501234567)</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="facebook">Facebook URL</Label>
+                  <Input
+                    id="facebook"
+                    type="url"
+                    placeholder="https://facebook.com/yourpage"
+                    value={formData.facebookUrl}
+                    onChange={(e) => setFormData({ ...formData, facebookUrl: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="instagram">Instagram URL</Label>
+                  <Input
+                    id="instagram"
+                    type="url"
+                    placeholder="https://instagram.com/yourpage"
+                    value={formData.instagramUrl}
+                    onChange={(e) => setFormData({ ...formData, instagramUrl: e.target.value })}
+                  />
+                </div>
               </div>
 
               <div className="flex gap-4">
