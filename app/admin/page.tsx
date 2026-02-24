@@ -53,6 +53,7 @@ export default function AdminPage() {
   const [restaurantToDelete, setRestaurantToDelete] = useState<Restaurant | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [needsRoleFix, setNeedsRoleFix] = useState(false);
+  const [loggedInEmail, setLoggedInEmail] = useState<string>("");
   const slowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -75,6 +76,7 @@ export default function AdminPage() {
           setAuthChecked(true);
           fetchRestaurants();
         } else {
+          setLoggedInEmail(user?.email || "");
           setNeedsRoleFix(true);
           setAuthChecked(true);
         }
@@ -186,9 +188,14 @@ export default function AdminPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {loggedInEmail && (
+              <p className="text-sm font-medium text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 p-3 rounded">
+                You are logged in as: <strong>{loggedInEmail}</strong> — use this exact email in the SQL below.
+              </p>
+            )}
             <pre className="p-4 bg-gray-100 dark:bg-gray-800 rounded text-sm overflow-x-auto">
 {`INSERT INTO public.user_roles (user_id, role)
-SELECT id, 'SUPER_ADMIN' FROM auth.users WHERE email = 'admin@restaurantmenu.com'
+SELECT id, 'SUPER_ADMIN' FROM auth.users WHERE email = '${(loggedInEmail || "admin@restaurantmenu.com").replace(/'/g, "''")}'
 ON CONFLICT (user_id) DO UPDATE SET role = 'SUPER_ADMIN';`}
             </pre>
             <p className="text-sm text-gray-600 dark:text-gray-400">
