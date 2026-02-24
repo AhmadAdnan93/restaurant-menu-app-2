@@ -72,12 +72,12 @@ export function Rating({ menuItemId, currentRating = 0, ratingCount = 0 }: Ratin
           />
         ))}
         {currentRating > 0 && (
-          <span className="text-sm text-gray-600 ml-1">
+          <span className="text-sm text-gray-600 dark:text-gray-400 ml-1">
             ({currentRating.toFixed(1)})
           </span>
         )}
         {ratingCount > 0 && (
-          <span className="text-sm text-gray-500">({ratingCount} {t.reviews})</span>
+          <span className="text-sm text-gray-500 dark:text-gray-400">({ratingCount} {t.reviews})</span>
         )}
       </div>
       <Dialog open={open} onOpenChange={setOpen}>

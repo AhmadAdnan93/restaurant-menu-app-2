@@ -18,8 +18,8 @@ export function ImageSlider({ images, alt, className }: ImageSliderProps) {
 
   if (!images || images.length === 0) {
     return (
-      <div className={cn("relative w-full h-64 bg-gray-200 rounded-lg", className)}>
-        <div className="absolute inset-0 flex items-center justify-center text-gray-400">
+      <div className={cn("relative w-full h-64 bg-gray-200 dark:bg-gray-700 rounded-lg", className)}>
+        <div className="absolute inset-0 flex items-center justify-center text-gray-400 dark:text-gray-500">
           No image
         </div>
       </div>
